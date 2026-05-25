@@ -1,0 +1,304 @@
+:root {
+  --bg-color: #ffffff;
+  --text-color: #2c3e50;
+  --menu-bg: rgba(249, 249, 249, 0.75);
+  --menu-border: rgba(238, 238, 238, 0.5);
+  --accent-color: #7c4dff;
+  --status-bar-bg: rgba(255, 255, 255, 0.8);
+  --content-max-width: 800px;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --line-height: 1.8;
+  --selectionColor: rgba(124, 77, 255, 0.25);
+  --editorColor: #2c3e50;
+  
+  /* Muya Core Variables */
+  --floatBgColor: #ffffff;
+  --floatBorderColor: rgba(0, 0, 0, 0.1);
+  --floatShadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  --highlightColor: rgba(124, 77, 255, 0.15);
+  --deleteColor: #ff5252;
+  --editorColor10: rgba(44, 62, 80, 0.1);
+  --editorColor30: rgba(44, 62, 80, 0.3);
+  --editorColor50: rgba(44, 62, 80, 0.5);
+  --editorColor80: rgba(44, 62, 80, 0.8);
+  
+  --themeColor: var(--accent-color);
+  --editorBgColor: var(--bg-color);
+  --editorColor04: rgba(44, 62, 80, 0.04);
+}
+
+body.theme-dark {
+  --bg-color: #1a1a1a;
+  --text-color: #e0e0e0;
+  --menu-bg: rgba(45, 45, 45, 0.75);
+  --menu-border: rgba(61, 61, 61, 0.5);
+  --accent-color: #bb86fc;
+  --status-bar-bg: rgba(26, 26, 26, 0.8);
+  --selectionColor: rgba(187, 134, 252, 0.35);
+  --editorColor: #e0e0e0;
+
+  /* Muya Core Dark Variables */
+  --floatBgColor: #2d2d2d;
+  --floatBorderColor: rgba(255, 255, 255, 0.1);
+  --floatShadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  --editorColor10: rgba(224, 224, 224, 0.1);
+  --editorColor30: rgba(224, 224, 224, 0.3);
+  --editorColor50: rgba(224, 224, 224, 0.5);
+  --editorColor80: rgba(224, 224, 224, 0.8);
+
+  --themeColor: var(--accent-color);
+  --editorBgColor: var(--bg-color);
+  --editorColor04: rgba(224, 224, 224, 0.04);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-family);
+  line-height: var(--line-height);
+  overflow: hidden; /* Prevent body scroll */
+  transition: background-color 0.4s ease, color 0.4s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#editor {
+  height: 100vh;
+  width: 100vw;
+  box-sizing: border-box;
+  outline: none !important;
+  overflow-y: auto;
+}
+
+/* 
+   Muya's internal container. 
+*/
+.muya-container {
+  width: 100vw;
+  min-height: 100vh;
+  box-sizing: border-box;
+  transition: color 0.4s ease;
+  outline: none !important; /* Remove the "ugly" yellow/blue focus border */
+}
+
+/* 
+   Muya's editing area (content wrapper)
+*/
+#ag-editor-id {
+  padding: 120px 10% !important; /* Increased padding for more breathing room */
+  max-width: var(--content-max-width) !important;
+  margin: 0 auto !important;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* Ensure no child elements have focus rings */
+.muya-container * {
+  outline: none !important;
+}
+
+/* 
+   Global Math Layout Fix - Final Stable Version
+   Ensures formulas never break the editor width and stay aligned with text.
+*/
+.ag-math {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  vertical-align: baseline !important; /* Locks baseline to the FIRST item (Source) */
+  max-width: 100% !important;
+  position: relative;
+  margin: 0 4px;
+  text-align: center;
+}
+
+/* Reading state: Only show the preview */
+.ag-math.ag-hide {
+  vertical-align: middle !important;
+  top: 0em; /* Reduced nudge down from 0.1em to fix the "too low" issue */
+}
+
+.ag-math.ag-hide .ag-math-render {
+  display: inline-block !important;
+}
+
+/* Editing state: Source on top, Preview below */
+.ag-math:not(.ag-hide) {
+  background: var(--editorColor10);
+  border: 1px solid var(--menu-border);
+  border-radius: 8px;
+  padding: 8px;
+  top: 0; /* Reset nudge in editing mode */
+}
+
+.ag-math:not(.ag-hide) .ag-math-text,
+pre.ag-multiple-math {
+  display: block !important;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+  font-size: 0.9em !important;
+  color: var(--accent-color) !important;
+  background: var(--editorColor10) !important;
+  padding: 16px 20px 24px 20px !important; /* Large bottom padding for scrollbar safety */
+  border-radius: 8px !important;
+  border: 1px solid var(--menu-border) !important;
+  margin-bottom: 8px !important;
+  max-width: 100% !important;
+  
+  /* Robust Wrapping Logic */
+  white-space: pre-wrap !important; 
+  word-break: break-all !important;
+  overflow-wrap: break-word !important;
+  line-height: 1.6 !important;
+  text-align: left !important;
+}
+
+.ag-math:not(.ag-hide) .ag-math-render {
+  display: block !important;
+  position: static !important; /* KILL the absolute floating */
+  bottom: auto !important;     /* KILL the "float to top" property */
+  top: auto !important;
+  transform: none !important;
+  
+  background: rgba(var(--accent-color), 0.05) !important;
+  padding: 12px 18px !important;
+  border-radius: 6px;
+  border: 1px dashed var(--menu-border);
+  margin-top: 8px;
+  box-shadow: none !important;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Custom mini scrollbar for formulas */
+.ag-math-render::-webkit-scrollbar {
+  height: 4px;
+}
+.ag-math-render::-webkit-scrollbar-thumb {
+  background: var(--menu-border);
+  border-radius: 2px;
+}
+
+/* Floating Menu Style */
+#floating-menu {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  visibility: hidden;
+  opacity: 0;
+  transform: scale(0.95);
+  background-color: var(--menu-bg);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid var(--menu-border);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  border-radius: 12px;
+  z-index: 10000;
+  padding: 6px;
+  min-width: 180px;
+  transition: 
+    opacity 0.15s ease-out, 
+    transform 0.15s ease-out, 
+    visibility 0.15s,
+    background-color 0.4s ease,
+    border-color 0.4s ease,
+    box-shadow 0.4s ease;
+  pointer-events: none;
+}
+
+#floating-menu.show {
+  visibility: visible;
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: all;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13.5px;
+  border-radius: 6px;
+  transition: background-color 0.2s, color 0.4s ease;
+  color: var(--text-color);
+}
+
+.menu-item svg {
+  opacity: 0.7;
+  transition: opacity 0.2s, color 0.4s ease;
+}
+
+.menu-item:hover {
+  background-color: var(--accent-color);
+  color: #fff;
+}
+
+.menu-item:hover svg {
+  opacity: 1;
+}
+
+/* Muya Theme Compatibility */
+.theme-dark .muya-container {
+  background-color: transparent !important;
+  color: var(--text-color) !important;
+}
+
+.theme-dark .ag-active {
+  background-color: rgba(187, 134, 252, 0.2) !important;
+  transition: background-color 0.4s ease;
+}
+
+/* Math Error State Styling */
+.ag-math-error {
+  color: var(--deleteColor) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 0.85em !important;
+  font-style: normal !important; /* Remove italics for better code readability */
+  background: rgba(255, 82, 82, 0.05) !important;
+  padding: 2px 6px !important;
+  border-radius: 4px;
+  border: 1px solid var(--deleteColor) !important;
+  white-space: pre-wrap !important; /* Allow wrapping for long erroneous formulas */
+}
+
+/* Status Bar Style */
+#status-bar {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  gap: 15px;
+  padding: 8px 16px;
+  background-color: var(--status-bar-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--menu-border);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--text-color);
+  opacity: 0;
+  transition: 
+    opacity 0.3s ease-in-out, 
+    background-color 0.4s ease, 
+    border-color 0.4s ease, 
+    color 0.4s ease;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+body:hover #status-bar {
+  opacity: 1;
+}
+
+#status-bar span {
+  opacity: 0.8;
+}
+
+/* Checked task item text style */
+li.ag-task-list-item > input.ag-checkbox-checked ~ p.ag-paragraph {
+  text-decoration: line-through;
+  opacity: 0.6;
+}

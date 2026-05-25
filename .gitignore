@@ -1,0 +1,12 @@
+node_modules
+.npm-cache
+dist
+.DS_Store
+*.log
+public
+docs
+.antigravitycli
+marktext-source
+GEMINI.md
+CLAUDE.md
+AGENTS.md
