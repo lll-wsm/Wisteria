@@ -165,16 +165,38 @@ const tauriAPI = {
   },
 
   // Export Ops
-  exportPdf: () => {
-    const element = document.querySelector('#editor');
+  exportPdf: async () => {
+    // 1. Generate clean HTML
+    const html = await muya.exportStyledHTML({ title: 'Wisteria Export' });
+
+    // 2. Create temporary container
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.top = '0';
+    tempContainer.style.width = '800px'; // Set a reasonable width for rendering
+    tempContainer.innerHTML = html;
+    document.body.appendChild(tempContainer);
+
+    // 3. Configure html2pdf options
     const opt = {
       margin: [0.5, 0.5],
       filename: activeFilePath ? activeFilePath.split('/').pop().replace('.md', '.pdf') : 'document.pdf',
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true,
+        logging: false
+      },
       jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
-    html2pdf().set(opt).from(element).save();
+
+    // 4. Perform export and cleanup
+    try {
+      await html2pdf().set(opt).from(tempContainer).save();
+    } finally {
+      document.body.removeChild(tempContainer);
+    }
   },
   exportHtml: async (html) => {
     const path = await save({
@@ -422,8 +444,8 @@ tauriAPI.onMenuPreferences(() => {
   openPreferencesModal()
 })
 
-tauriAPI.onMenuPdf(() => {
-  tauriAPI.exportPdf()
+tauriAPI.onMenuPdf(async () => {
+  await tauriAPI.exportPdf()
 })
 
 tauriAPI.onMenuHtml(async () => {

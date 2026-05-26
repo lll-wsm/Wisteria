@@ -149,7 +149,9 @@ const dragDropCtrl = (ContentState) => {
       const image = fileList.find((file) => /image/.test(file.type))
       if (image && dropAnchor) {
         const { name } = image
-        const path = window.electron.webUtils.getPathForFile(image)
+        const path = (window.electron && window.electron.webUtils) 
+          ? window.electron.webUtils.getPathForFile(image) 
+          : ""
         const id = `loading-${getUniqueId()}`
         const text = `![${id}](${path})`
         const imageBlock = this.createBlockP(text)
@@ -170,19 +172,21 @@ const dragDropCtrl = (ContentState) => {
         this.render()
 
         try {
-          const newSrc = await this.muya.options.imageAction(path, id, name)
-          const { src } = getImageSrc(path)
-          if (src) {
-            this.stateRender.urlMap.set(newSrc, src)
-          }
-          const imageWrapper = this.muya.container.querySelector(`span[data-id=${id}]`)
+          if (typeof this.muya.options.imageAction === 'function') {
+            const newSrc = await this.muya.options.imageAction(path, id, name)
+            const { src } = getImageSrc(path)
+            if (src) {
+              this.stateRender.urlMap.set(newSrc, src)
+            }
+            const imageWrapper = this.muya.container.querySelector(`span[data-id=${id}]`)
 
-          if (imageWrapper) {
-            const imageInfo = getImageInfo(imageWrapper)
-            this.replaceImage(imageInfo, {
-              alt: name,
-              src: newSrc
-            })
+            if (imageWrapper) {
+              const imageInfo = getImageInfo(imageWrapper)
+              this.replaceImage(imageInfo, {
+                alt: name,
+                src: newSrc
+              })
+            }
           }
         } catch (error) {
           // TODO: Notify user about an error.
