@@ -279,6 +279,25 @@ const muya = new Muya(container, {
   markdown: '# Hello Wisteria\n\nThis is your new minimalist editor.'
 })
 
+// Fix: Override Muya's image path correction to support Tauri asset protocol
+// and relative paths without breaking the global base href.
+const originalCorrectImageSrc = muya.contentState.correctImageSrc
+muya.contentState.correctImageSrc = (src) => {
+  if (src && !src.startsWith('http') && !src.startsWith('data:') && !src.startsWith('tauri-asset:')) {
+    if (activeFilePath) {
+      // If it's a relative path, resolve it against the active file
+      const dir = activeFilePath.substring(0, activeFilePath.lastIndexOf('/'))
+      // This is a bit of a hack since we don't have synchronous join here, 
+      // but for simple relative paths like ./assets/xxx it works.
+      const absolutePath = src.startsWith('./') 
+        ? dir + src.substring(1) 
+        : (src.startsWith('/') ? src : dir + '/' + src)
+      return convertFileSrc(absolutePath)
+    }
+  }
+  return src
+}
+
 console.log('Muya initialized:', muya)
 
 // Sidebar workspace states
@@ -376,7 +395,6 @@ tauriAPI.onMenuNew(async () => {
     }
   }
   activeFilePath = null
-  updateBaseHref(null)
   muya.markdown = '# New Document\n\n'
   muya.setMarkdown('# New Document\n\n')
   updateActiveFileHighlight()
@@ -393,7 +411,6 @@ tauriAPI.onMenuOpen(async () => {
   const result = await tauriAPI.openFile()
   if (result.success && result.path) {
     activeFilePath = result.path
-    updateBaseHref(activeFilePath)
     muya.markdown = result.content
     muya.setMarkdown(result.content)
     updateActiveFileHighlight()
@@ -420,7 +437,6 @@ tauriAPI.onMenuSave(async () => {
     const result = await tauriAPI.saveFile(muya.markdown)
     if (result.success && result.path) {
       activeFilePath = result.path
-      updateBaseHref(activeFilePath)
       updateActiveFileHighlight()
       showSaveIndicator('Saved', 1500)
     }
@@ -434,7 +450,6 @@ tauriAPI.onMenuSaveAs(async () => {
   const result = await tauriAPI.saveFileAs(muya.markdown)
   if (result.success && result.path) {
     activeFilePath = result.path
-    updateBaseHref(activeFilePath)
     updateActiveFileHighlight()
     showSaveIndicator('Saved', 1500)
   }
@@ -661,25 +676,6 @@ function applyConfiguredTheme(themeMode) {
     applySystemTheme(mediaQuery)
     themeMediaQueryListener = applySystemTheme
     mediaQuery.addEventListener('change', themeMediaQueryListener)
-  }
-}
-
-function updateBaseHref(filePath) {
-  let baseElement = document.querySelector('base')
-  if (!baseElement) {
-    baseElement = document.createElement('base')
-    document.head.appendChild(baseElement)
-  }
-  if (filePath) {
-    let dir = filePath.substring(0, filePath.lastIndexOf('/'))
-    if (!dir && filePath.includes('\\')) {
-      dir = filePath.substring(0, filePath.lastIndexOf('\\'))
-    }
-    // In Tauri, we use convertFileSrc to allow loading local assets via the asset protocol
-    const baseUrl = convertFileSrc(dir + '/')
-    baseElement.href = baseUrl
-  } else {
-    baseElement.removeAttribute('href')
   }
 }
 
@@ -999,7 +995,6 @@ async function selectFile(filePath) {
   const result = await tauriAPI.openFileWithPath(filePath)
   if (result.success) {
     activeFilePath = filePath
-    updateBaseHref(filePath)
     muya.markdown = result.content
     muya.setMarkdown(result.content)
     updateActiveFileHighlight()
@@ -1613,7 +1608,6 @@ sidebarContextMenu.addEventListener('click', async (e) => {
         if (result.success) {
           if (activeFilePath === contextMenuTargetPath) {
             activeFilePath = null
-            updateBaseHref(null)
             muya.markdown = ''
             muya.setMarkdown('')
           }
