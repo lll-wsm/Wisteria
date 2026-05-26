@@ -12,8 +12,13 @@
     <div id="sidebar" class="collapsed">
       <div id="sidebar-header">
         <span class="sidebar-title">Workspace</span>
-        <div id="open-folder-btn" role="button" title="Open Folder">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+        <div class="sidebar-actions">
+          <div id="open-folder-btn" role="button" title="Open Folder">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          </div>
+          <div id="sidebar-settings-btn" role="button" title="Preferences">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          </div>
         </div>
       </div>
       <div id="sidebar-tree">
@@ -36,72 +41,124 @@
   </button>
 
   <div id="floating-menu">
-    <div class="menu-item" id="menu-cut">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line></svg>
-      Cut
-    </div>
-    <div class="menu-item" id="menu-copy">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-      Copy
-    </div>
-    <div class="menu-item" id="menu-paste">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1-2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-      Paste
-    </div>
-    <div class="menu-item" id="menu-delete">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 3 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-      Delete
-    </div>
-    <hr style="border: 0; border-top: 1px solid var(--menu-border); margin: 4px 0;">
-    <div class="menu-item" id="menu-save">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-      Save File
-    </div>
-    <div class="menu-item" id="menu-save-as">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-      Save As...
-    </div>
-    <hr style="border: 0; border-top: 1px solid var(--menu-border); margin: 4px 0;">
-    <div class="menu-item" id="menu-pdf">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-      Export PDF
-    </div>
-    <div class="menu-item" id="menu-html">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-      Export HTML
-    </div>
-    <hr style="border: 0; border-top: 1px solid var(--menu-border); margin: 4px 0;">
-    <div class="menu-item" id="menu-theme">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-      Switch Theme
-    </div>
+    <div class="menu-item" id="menu-cut">Cut</div>
+    <div class="menu-item" id="menu-copy">Copy</div>
+    <div class="menu-item" id="menu-paste">Paste</div>
+    <div class="menu-item" id="menu-delete">Delete</div>
+    <hr style="border: 0; border-top: 1px solid var(--menu-border); margin: 3px 0;">
+    <div class="menu-item" id="menu-pdf">Export PDF</div>
+    <div class="menu-item" id="menu-html">Export HTML</div>
   </div>
 
   <!-- Sidebar Context Menu -->
   <div id="sidebar-context-menu" class="context-menu">
-    <div class="menu-item" id="ctx-new-file">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-      New File
-    </div>
-    <div class="menu-item" id="ctx-new-folder">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
-      New Folder
-    </div>
-    <div class="menu-item" id="ctx-rename">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-      Rename
-    </div>
-    <hr style="border: 0; border-top: 1px solid var(--menu-border); margin: 4px 0;">
-    <div class="menu-item" id="ctx-delete" style="color: var(--deleteColor);">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 3 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-      Move to Trash
-    </div>
+    <div class="menu-item" id="ctx-new-file">New File</div>
+    <div class="menu-item" id="ctx-new-folder">New Folder</div>
+    <div class="menu-item" id="ctx-rename">Rename</div>
+    <hr style="border: 0; border-top: 1px solid var(--menu-border); margin: 3px 0;">
+    <div class="menu-item" id="ctx-delete" style="color: var(--deleteColor);">Move to Trash</div>
   </div>
 
   <div id="status-bar">
+    <span id="status-save-state" class="status-indicator"></span>
     <span id="status-word-count">0 words</span>
     <span id="status-char-count">0 characters</span>
   </div>
+
+  <!-- Preferences Modal -->
+  <div id="preferences-modal" class="modal-overlay">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <span class="modal-title">Preferences</span>
+        <button id="settings-close-btn" class="modal-close-btn" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- Section: Appearance -->
+        <div class="settings-section">
+          <span class="settings-section-title">Appearance</span>
+          
+          <div class="settings-row">
+            <span class="settings-row-label">Theme Mode</span>
+            <div id="theme-segmented" class="segmented-control">
+              <div class="segmented-option" data-value="light">Light</div>
+              <div class="segmented-option" data-value="dark">Dark</div>
+              <div class="segmented-option" data-value="system">System</div>
+            </div>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-row-label">Font Family</span>
+            <select id="settings-font-family" class="settings-select">
+              <option value="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Sans-serif (Inter/System)</option>
+              <option value="Georgia, 'Times New Roman', serif">Serif (Georgia)</option>
+              <option value="'JetBrains Mono', 'Fira Code', Consolas, Monaco, monospace">Monospace (JetBrains Mono)</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-row-label">Font Size</span>
+            <div class="slider-container">
+              <input type="range" id="settings-font-size" class="settings-slider" min="12" max="32" step="1">
+              <span id="font-size-val" class="slider-value">16px</span>
+            </div>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-row-label">Line Height</span>
+            <div class="slider-container">
+              <input type="range" id="settings-line-height" class="settings-slider" min="1.2" max="2.5" step="0.1">
+              <span id="line-height-val" class="slider-value">1.8</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Section: Editor -->
+        <div class="settings-section">
+          <span class="settings-section-title">Editor</span>
+          
+          <div class="settings-row">
+            <span class="settings-row-label">Auto-save Delay</span>
+            <span class="settings-row-desc">Automatically saves your modifications after typing stops.</span>
+            <select id="settings-auto-save" class="settings-select">
+              <option value="0">Off (Switch file only)</option>
+              <option value="1000">1 second</option>
+              <option value="2000">2 seconds</option>
+              <option value="5000">5 seconds</option>
+              <option value="10000">10 seconds</option>
+            </select>
+          </div>
+        </div>
+        
+        <!-- Section: Files & Assets -->
+        <div class="settings-section">
+          <span class="settings-section-title">Media & Assets</span>
+          
+          <div class="settings-row">
+            <span class="settings-row-label">Image Save Directory</span>
+            <div id="image-save-segmented" class="segmented-control">
+              <div class="segmented-option" data-value="local">Relative assets/</div>
+              <div class="segmented-option" data-value="global">Global directory</div>
+            </div>
+          </div>
+          
+          <div id="global-path-row" class="settings-row" style="display: none;">
+            <span class="settings-row-label">Global Image Path</span>
+            <div class="folder-picker-container">
+              <input type="text" id="settings-image-path" class="settings-input" style="flex-grow: 1;" placeholder="Select folder..." readonly>
+              <button id="browse-image-path-btn" class="folder-picker-btn">Browse...</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="settings-reset-btn" class="settings-btn secondary">Restore Defaults</button>
+        <button id="settings-save-btn" class="settings-btn primary">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="./src/renderer.js"></script>
 </body>
 </html>

@@ -21,7 +21,10 @@ function getDirname(p) {
 async function handleImageFile(file) {
   const extension = file.name ? file.name.split('.').pop() : (file.type ? file.type.split('/')[1] : 'png')
   const buffer = await file.arrayBuffer()
-  const result = await window.electronAPI.saveAsset(buffer, extension)
+  const result = await window.electronAPI.saveAsset(buffer, extension, {
+    mode: currentSettings.imageSaveMode,
+    globalPath: currentSettings.imageGlobalPath
+  })
   if (result.success) {
     muya.contentState.insertImage({ src: result.path })
   } else {
@@ -100,6 +103,7 @@ window.electronAPI.onMenuNew(async () => {
     }
   }
   activeFilePath = null
+  updateBaseHref(null)
   muya.markdown = '# New Document\n\n'
   muya.setMarkdown('# New Document\n\n')
   updateActiveFileHighlight()
@@ -116,30 +120,55 @@ window.electronAPI.onMenuOpen(async () => {
   const result = await window.electronAPI.openFile()
   if (result.success && result.path) {
     activeFilePath = result.path
+    updateBaseHref(activeFilePath)
     muya.markdown = result.content
     muya.setMarkdown(result.content)
     updateActiveFileHighlight()
   }
 })
 
+window.electronAPI.onMenuOpenFolder(() => {
+  handleOpenFolder()
+})
+
 window.electronAPI.onMenuSave(async () => {
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer)
+  }
   if (activeFilePath) {
-    await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
+    showSaveIndicator('Saving...')
+    try {
+      await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
+      showSaveIndicator('Saved', 1500)
+    } catch (err) {
+      showSaveIndicator('Save failed', 2000, true)
+    }
   } else {
     const result = await window.electronAPI.saveFile(muya.markdown)
     if (result.success && result.path) {
       activeFilePath = result.path
+      updateBaseHref(activeFilePath)
       updateActiveFileHighlight()
+      showSaveIndicator('Saved', 1500)
     }
   }
 })
 
 window.electronAPI.onMenuSaveAs(async () => {
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer)
+  }
   const result = await window.electronAPI.saveFileAs(muya.markdown)
   if (result.success && result.path) {
     activeFilePath = result.path
+    updateBaseHref(activeFilePath)
     updateActiveFileHighlight()
+    showSaveIndicator('Saved', 1500)
   }
+})
+
+window.electronAPI.onMenuPreferences(() => {
+  openPreferencesModal()
 })
 
 window.electronAPI.onMenuPdf(() => {
@@ -262,7 +291,13 @@ document.querySelector('#floating-menu').addEventListener('click', async (e) => 
       window.electronAPI.exportHtml(html);
       break
     case 'menu-theme':
-      document.body.classList.toggle('theme-dark')
+      const isDark = document.body.classList.toggle('theme-dark')
+      currentSettings.theme = isDark ? 'dark' : 'light'
+      saveSettings()
+      applyConfiguredTheme(currentSettings.theme)
+      break
+    case 'menu-preferences':
+      openPreferencesModal()
       break
   }
 })
@@ -279,30 +314,362 @@ function updateStatusBar(wordCount) {
 
 muya.on('change', (payload) => {
   updateStatusBar(payload.wordCount)
+  debounceAutoSave()
 })
 
-// Theme Initialization
-function initTheme() {
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-  
-  const applyTheme = (e) => {
-    if (e.matches) {
-      document.body.classList.add('theme-dark')
-    } else {
-      document.body.classList.remove('theme-dark')
-    }
-  }
+// ==========================================
+// Settings & Preferences Manager Logic
+// ==========================================
 
-  // Initial check
-  applyTheme(mediaQuery)
-
-  // Listen for changes
-  mediaQuery.addEventListener('change', applyTheme)
+const DEFAULT_SETTINGS = {
+  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
+  fontSize: 16,
+  lineHeight: 1.8,
+  theme: 'system',
+  autoSaveDelay: 2000, // 2s
+  imageSaveMode: 'local',
+  imageGlobalPath: ''
 }
 
-// Initial update
+let currentSettings = { ...DEFAULT_SETTINGS }
+
+function loadSettings() {
+  try {
+    const saved = localStorage.getItem('wisteria-settings')
+    if (saved) {
+      currentSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }
+    }
+  } catch (err) {
+    console.error('Failed to load settings:', err)
+  }
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem('wisteria-settings', JSON.stringify(currentSettings))
+  } catch (err) {
+    console.error('Failed to save settings:', err)
+  }
+}
+
+function applyStyles() {
+  document.documentElement.style.setProperty('--font-family', currentSettings.fontFamily)
+  document.documentElement.style.setProperty('--font-size', `${currentSettings.fontSize}px`)
+  document.documentElement.style.setProperty('--line-height', currentSettings.lineHeight)
+}
+
+let themeMediaQueryListener = null
+
+function applyConfiguredTheme(themeMode) {
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  
+  if (themeMediaQueryListener) {
+    mediaQuery.removeEventListener('change', themeMediaQueryListener)
+    themeMediaQueryListener = null
+  }
+
+  if (themeMode === 'dark') {
+    document.body.classList.add('theme-dark')
+  } else if (themeMode === 'light') {
+    document.body.classList.remove('theme-dark')
+  } else {
+    // system
+    const applySystemTheme = (e) => {
+      if (e.matches) {
+        document.body.classList.add('theme-dark')
+      } else {
+        document.body.classList.remove('theme-dark')
+      }
+    }
+    applySystemTheme(mediaQuery)
+    themeMediaQueryListener = applySystemTheme
+    mediaQuery.addEventListener('change', themeMediaQueryListener)
+  }
+}
+
+function updateBaseHref(filePath) {
+  let baseElement = document.querySelector('base')
+  if (!baseElement) {
+    baseElement = document.createElement('base')
+    document.head.appendChild(baseElement)
+  }
+  if (filePath) {
+    let dir = filePath.substring(0, filePath.lastIndexOf('/'))
+    if (!dir && filePath.includes('\\')) {
+      dir = filePath.substring(0, filePath.lastIndexOf('\\'))
+    }
+    dir = dir.replace(/\\/g, '/')
+    if (dir.match(/^[a-zA-Z]:/)) {
+      baseElement.href = `file:///${dir}/`
+    } else {
+      baseElement.href = `file://${dir}/`
+    }
+  } else {
+    baseElement.removeAttribute('href')
+  }
+}
+
+// Debounced Auto-save
+let autoSaveTimer = null
+let isSaving = false
+
+function debounceAutoSave() {
+  if (!activeFilePath || isSaving) return
+  
+  const delay = currentSettings.autoSaveDelay
+  if (delay <= 0) return
+
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer)
+  }
+
+  autoSaveTimer = setTimeout(async () => {
+    isSaving = true
+    showSaveIndicator('Saving...')
+    try {
+      await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
+      showSaveIndicator('Saved', 1500)
+    } catch (err) {
+      console.error('Auto-save failed:', err)
+      showSaveIndicator('Save failed', 2000, true)
+    } finally {
+      isSaving = false
+    }
+  }, delay)
+}
+
+function showSaveIndicator(text, duration = 0, isError = false) {
+  const indicator = document.querySelector('#status-save-state')
+  if (!indicator) return
+  
+  indicator.innerText = text
+  indicator.className = 'status-indicator'
+  
+  if (text === 'Saving...') {
+    indicator.classList.add('saving')
+  } else if (isError) {
+    indicator.classList.add('error')
+  } else {
+    indicator.classList.add('saved')
+  }
+  
+  if (duration > 0) {
+    setTimeout(() => {
+      if (indicator.innerText === text) {
+        indicator.innerText = ''
+        indicator.className = 'status-indicator'
+      }
+    }, duration)
+  }
+}
+
+// UI Bindings for Preferences Dialog
+const prefsModal = document.querySelector('#preferences-modal')
+const sidebarSettingsBtn = document.querySelector('#sidebar-settings-btn')
+const settingsCloseBtn = document.querySelector('#settings-close-btn')
+const settingsSaveBtn = document.querySelector('#settings-save-btn')
+const settingsResetBtn = document.querySelector('#settings-reset-btn')
+
+// Appearance Controls
+const settingsFontFamily = document.querySelector('#settings-font-family')
+const settingsFontSize = document.querySelector('#settings-font-size')
+const fontSizeVal = document.querySelector('#font-size-val')
+const settingsLineHeight = document.querySelector('#settings-line-height')
+const lineHeightVal = document.querySelector('#line-height-val')
+
+// Editor Controls
+const settingsAutoSave = document.querySelector('#settings-auto-save')
+
+// Media Controls
+const settingsImagePath = document.querySelector('#settings-image-path')
+const browseImagePathBtn = document.querySelector('#browse-image-path-btn')
+const globalPathRow = document.querySelector('#global-path-row')
+
+function initSegmentedControl(id, value, onChange) {
+  const control = document.querySelector(`#${id}`)
+  
+  // Clone options to prevent multiple event listener accumulation
+  const options = control.querySelectorAll('.segmented-option')
+  options.forEach(opt => {
+    const newOpt = opt.cloneNode(true)
+    opt.parentNode.replaceChild(newOpt, opt)
+  })
+
+  // Re-fetch options after cloning to bind listeners to active DOM nodes
+  const activeOptions = control.querySelectorAll('.segmented-option')
+  
+  const selectOption = (val) => {
+    activeOptions.forEach(opt => {
+      if (opt.dataset.value === val) {
+        opt.classList.add('selected')
+      } else {
+        opt.classList.remove('selected')
+      }
+    })
+  }
+
+  selectOption(value)
+  
+  activeOptions.forEach(opt => {
+    opt.addEventListener('click', () => {
+      const newVal = opt.dataset.value
+      selectOption(newVal)
+      onChange(newVal)
+    })
+  })
+}
+
+function openPreferencesModal() {
+  loadSettings()
+  
+  initSegmentedControl('theme-segmented', currentSettings.theme, (val) => {
+    currentSettings.theme = val
+    applyConfiguredTheme(val)
+  })
+  
+  settingsFontFamily.value = currentSettings.fontFamily
+  settingsFontSize.value = currentSettings.fontSize
+  fontSizeVal.innerText = `${currentSettings.fontSize}px`
+  settingsLineHeight.value = currentSettings.lineHeight
+  lineHeightVal.innerText = currentSettings.lineHeight
+  
+  settingsAutoSave.value = currentSettings.autoSaveDelay
+  
+  initSegmentedControl('image-save-segmented', currentSettings.imageSaveMode, (val) => {
+    currentSettings.imageSaveMode = val
+    if (val === 'global') {
+      globalPathRow.style.display = 'flex'
+    } else {
+      globalPathRow.style.display = 'none'
+    }
+  })
+  
+  if (currentSettings.imageSaveMode === 'global') {
+    globalPathRow.style.display = 'flex'
+  } else {
+    globalPathRow.style.display = 'none'
+  }
+  settingsImagePath.value = currentSettings.imageGlobalPath
+
+  prefsModal.classList.add('show')
+}
+
+function closePreferencesModal() {
+  prefsModal.classList.remove('show')
+  loadSettings()
+  applyConfiguredTheme(currentSettings.theme)
+  applyStyles()
+}
+
+// Live Previews
+settingsFontSize.addEventListener('input', (e) => {
+  const val = e.target.value
+  fontSizeVal.innerText = `${val}px`
+  document.documentElement.style.setProperty('--font-size', `${val}px`)
+})
+
+settingsLineHeight.addEventListener('input', (e) => {
+  const val = e.target.value
+  lineHeightVal.innerText = val
+  document.documentElement.style.setProperty('--line-height', val)
+})
+
+settingsFontFamily.addEventListener('change', (e) => {
+  const val = e.target.value
+  document.documentElement.style.setProperty('--font-family', val)
+})
+
+browseImagePathBtn.addEventListener('click', async () => {
+  const result = await window.electronAPI.selectImageFolder()
+  if (result.success && result.path) {
+    settingsImagePath.value = result.path
+  }
+})
+
+settingsCloseBtn.addEventListener('click', closePreferencesModal)
+prefsModal.addEventListener('click', (e) => {
+  if (e.target === prefsModal) {
+    closePreferencesModal()
+  }
+})
+
+settingsSaveBtn.addEventListener('click', () => {
+  currentSettings.fontFamily = settingsFontFamily.value
+  currentSettings.fontSize = parseInt(settingsFontSize.value, 10)
+  currentSettings.lineHeight = parseFloat(settingsLineHeight.value)
+  currentSettings.autoSaveDelay = parseInt(settingsAutoSave.value, 10)
+  currentSettings.imageGlobalPath = settingsImagePath.value
+  
+  saveSettings()
+  applyConfiguredTheme(currentSettings.theme)
+  applyStyles()
+  prefsModal.classList.remove('show')
+})
+
+settingsResetBtn.addEventListener('click', () => {
+  if (confirm('Are you sure you want to restore default preferences?')) {
+    currentSettings = { ...DEFAULT_SETTINGS }
+    saveSettings()
+    applyConfiguredTheme(currentSettings.theme)
+    applyStyles()
+    
+    settingsFontFamily.value = currentSettings.fontFamily
+    settingsFontSize.value = currentSettings.fontSize
+    fontSizeVal.innerText = `${currentSettings.fontSize}px`
+    settingsLineHeight.value = currentSettings.lineHeight
+    lineHeightVal.innerText = currentSettings.lineHeight
+    settingsAutoSave.value = currentSettings.autoSaveDelay
+    settingsImagePath.value = currentSettings.imageGlobalPath
+    
+    initSegmentedControl('theme-segmented', currentSettings.theme, (val) => {
+      currentSettings.theme = val
+      applyConfiguredTheme(val)
+    })
+    initSegmentedControl('image-save-segmented', currentSettings.imageSaveMode, (val) => {
+      currentSettings.imageSaveMode = val
+      if (val === 'global') {
+        globalPathRow.style.display = 'flex'
+      } else {
+        globalPathRow.style.display = 'none'
+      }
+    })
+    if (currentSettings.imageSaveMode === 'global') {
+      globalPathRow.style.display = 'flex'
+    } else {
+      globalPathRow.style.display = 'none'
+    }
+  }
+})
+
+if (sidebarSettingsBtn) {
+  sidebarSettingsBtn.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    openPreferencesModal()
+  })
+}
+
+// Global hotkeys (Cmd+, / Ctrl+, for settings, Escape to close)
+window.addEventListener('keydown', (e) => {
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const isCmdComma = (isMac ? e.metaKey : e.ctrlKey) && e.key === ','
+  
+  if (isCmdComma) {
+    e.preventDefault()
+    openPreferencesModal()
+  }
+  
+  if (e.key === 'Escape' && prefsModal.classList.contains('show')) {
+    e.preventDefault()
+    closePreferencesModal()
+  }
+})
+
+// Initialize configurations on load
+loadSettings()
 updateStatusBar(muya.getWordCount(muya.markdown))
-initTheme()
+applyConfiguredTheme(currentSettings.theme)
+applyStyles()
 
 // ==========================================
 // Sidebar & Workspace Controller Logic
@@ -343,6 +710,10 @@ window.addEventListener('keydown', (e) => {
 async function selectFile(filePath) {
   if (activeFilePath === filePath) return
 
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer)
+  }
+
   if (activeFilePath) {
     try {
       await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
@@ -354,6 +725,7 @@ async function selectFile(filePath) {
   const result = await window.electronAPI.openFileWithPath(filePath)
   if (result.success) {
     activeFilePath = filePath
+    updateBaseHref(filePath)
     muya.markdown = result.content
     muya.setMarkdown(result.content)
     updateActiveFileHighlight()
@@ -899,6 +1271,7 @@ function showInlineInputForRename(targetPath, isDir) {
       }
       if (activeFilePath === targetPath) {
         activeFilePath = newPath
+        updateBaseHref(newPath)
       }
     } else {
       alert(result.error || 'Failed to rename')
@@ -966,6 +1339,7 @@ sidebarContextMenu.addEventListener('click', async (e) => {
         if (result.success) {
           if (activeFilePath === contextMenuTargetPath) {
             activeFilePath = null
+            updateBaseHref(null)
             muya.markdown = ''
             muya.setMarkdown('')
           }

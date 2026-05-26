@@ -1,15 +1,51 @@
 {
-  "name": "wisteria-editor",
+  "name": "wisteria",
+  "productName": "Wisteria",
   "version": "0.1.0",
   "main": "main.js",
   "scripts": {
     "dev": "node start-dev.js",
     "vite": "vite",
     "build": "vite build",
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "npm run build && electron-builder"
+  },
+  "build": {
+    "appId": "com.wisteria.editor",
+    "productName": "Wisteria",
+    "copyright": "Copyright © 2026 Wisteria",
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "icons/wisteria.icns"
+    },
+    "directories": {
+      "output": "dist-app"
+    },
+    "files": [
+      "dist/**/*",
+      "main.js",
+      "preload.js",
+      "package.json",
+      "icons/wisteria.icns",
+      "!muya-core/src",
+      "!muya-core/node_modules",
+      "!**/node_modules/*/{test,tests,doc,docs,benchmark,demo,example,examples}",
+      "!**/*.{map,md,markdown,log,txt,DS_Store,ts}"
+    ],
+    "asar": true,
+    "compression": "maximum"
   },
   "devDependencies": {
     "electron": "^30.0.0",
+    "electron-builder": "^24.13.3",
     "path-browserify": "^1.0.1",
     "vite": "^5.0.0"
   },

@@ -1,5 +1,7 @@
 node_modules
 .npm-cache
+.claude
+dist-app
 dist
 .DS_Store
 *.log

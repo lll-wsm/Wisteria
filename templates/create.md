@@ -1,4 +1,4 @@
-# ✨ KaTeX 与 Mermaid 增强特性演示# ✨ KaTeX 与 Mermaid 增强特性演示
+# ✨ KaTeX 与 Mermaid 增强特性演示#
 
 本文档展示了最新版本中 **KaTeX（数学公式）** 和 **Mermaid（图表）** 的两项重要改进。
 

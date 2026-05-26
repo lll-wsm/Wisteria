@@ -21,7 +21,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   trashPath: (filePath) => ipcRenderer.invoke('trash-path', filePath),
   
   // Asset Ops
-  saveAsset: (buffer, extension) => ipcRenderer.invoke('save-asset', buffer, extension),
+  saveAsset: (buffer, extension, options) => ipcRenderer.invoke('save-asset', buffer, extension, options),
+  selectImageFolder: () => ipcRenderer.invoke('select-image-folder'),
   
   // Export Ops
   exportPdf: () => ipcRenderer.invoke('export-pdf'),
@@ -30,9 +31,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Menu Listeners
   onMenuNew: (callback) => ipcRenderer.on('menu-new', () => callback()),
   onMenuOpen: (callback) => ipcRenderer.on('menu-open', () => callback()),
+  onMenuOpenFolder: (callback) => ipcRenderer.on('menu-open-folder', () => callback()),
   onMenuSave: (callback) => ipcRenderer.on('menu-save', () => callback()),
   onMenuSaveAs: (callback) => ipcRenderer.on('menu-save-as', () => callback()),
   onMenuPdf: (callback) => ipcRenderer.on('menu-pdf', () => callback()),
   onMenuHtml: (callback) => ipcRenderer.on('menu-html', () => callback()),
+  onMenuPreferences: (callback) => ipcRenderer.on('menu-preferences', () => callback()),
   onFolderUpdate: (callback) => ipcRenderer.on('folder-update', (event, tree) => callback(tree))
 })

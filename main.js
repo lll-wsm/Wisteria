@@ -1,6 +1,23 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, Menu, nativeImage, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
+const { pathToFileURL } = require('url')
+
+app.name = 'Wisteria'
+app.setName('Wisteria')
+
+// Set dock icon early for macOS using a PNG for better compatibility in dev mode
+if (process.platform === 'darwin') {
+  try {
+    const iconPath = path.join(__dirname, 'icons', 'icon_512x512.png')
+    if (fs.existsSync(iconPath)) {
+      const image = nativeImage.createFromPath(iconPath)
+      app.dock.setIcon(image)
+    }
+  } catch (err) {
+    console.error('Failed to set dock icon:', err)
+  }
+}
 
 let currentFilePath = null
 
@@ -11,6 +28,8 @@ function createMenu() {
       label: app.name,
       submenu: [
         { role: 'about' },
+        { type: 'separator' },
+        { label: 'Preferences...', accelerator: 'CmdOrCtrl+,', click: (menuItem, browserWindow) => { const win = browserWindow || BrowserWindow.getFocusedWindow(); if (win) win.webContents.send('menu-preferences') } },
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },
@@ -26,11 +45,16 @@ function createMenu() {
       submenu: [
         { label: 'New File', accelerator: 'CmdOrCtrl+N', click: (menuItem, browserWindow) => { const win = browserWindow || BrowserWindow.getFocusedWindow(); if (win) win.webContents.send('menu-new') } },
         { label: 'Open...', accelerator: 'CmdOrCtrl+O', click: (menuItem, browserWindow) => { const win = browserWindow || BrowserWindow.getFocusedWindow(); if (win) win.webContents.send('menu-open') } },
+        { label: 'Open Folder...', accelerator: 'CmdOrCtrl+Shift+O', click: (menuItem, browserWindow) => { const win = browserWindow || BrowserWindow.getFocusedWindow(); if (win) win.webContents.send('menu-open-folder') } },
         { label: 'Save', accelerator: 'CmdOrCtrl+S', click: (menuItem, browserWindow) => { const win = browserWindow || BrowserWindow.getFocusedWindow(); if (win) win.webContents.send('menu-save') } },
         { label: 'Save As...', accelerator: 'CmdOrCtrl+Shift+S', click: (menuItem, browserWindow) => { const win = browserWindow || BrowserWindow.getFocusedWindow(); if (win) win.webContents.send('menu-save-as') } },
         { type: 'separator' },
         { label: 'Export PDF', accelerator: 'CmdOrCtrl+E', click: (menuItem, browserWindow) => { const win = browserWindow || BrowserWindow.getFocusedWindow(); if (win) win.webContents.send('menu-pdf') } },
         { label: 'Export HTML', accelerator: 'CmdOrCtrl+Shift+H', click: (menuItem, browserWindow) => { const win = browserWindow || BrowserWindow.getFocusedWindow(); if (win) win.webContents.send('menu-html') } },
+        ...(!isMac ? [
+          { type: 'separator' },
+          { label: 'Preferences...', accelerator: 'CmdOrCtrl+,', click: (menuItem, browserWindow) => { const win = browserWindow || BrowserWindow.getFocusedWindow(); if (win) win.webContents.send('menu-preferences') } }
+        ] : []),
         { type: 'separator' },
         isMac ? { role: 'close' } : { role: 'quit' }
       ]
@@ -67,11 +91,18 @@ function createMenu() {
 }
 
 function createWindow() {
+  const iconPath = process.platform === 'darwin'
+    ? path.join(__dirname, 'icons', 'wisteria.icns')
+    : path.join(__dirname, 'icons', 'icon_256x256.png')
+
   const win = new BrowserWindow({
     width: 1020,
     height: 800,
+    title: 'Wisteria',
+    icon: iconPath,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      webSecurity: false
     }
   })
 
@@ -176,29 +207,54 @@ ipcMain.handle('open-file', async (event) => {
   }
 })
 
-ipcMain.handle('save-asset', async (event, buffer, extension) => {
-  if (!currentFilePath) {
+ipcMain.handle('save-asset', async (event, buffer, extension, options = {}) => {
+  if (options.mode !== 'global' && !currentFilePath) {
     return { success: false, error: 'File must be saved before adding assets' }
   }
 
   try {
-    const dir = path.dirname(currentFilePath)
-    const assetsDir = path.join(dir, 'assets')
-    
-    if (!fs.existsSync(assetsDir)) {
-      fs.mkdirSync(assetsDir, { recursive: true })
-    }
+    let filePath
+    let returnPath
 
-    const filename = `image-${Date.now()}.${extension || 'png'}`
-    const filePath = path.join(assetsDir, filename)
+    if (options.mode === 'global' && options.globalPath) {
+      const globalDir = options.globalPath
+      if (!fs.existsSync(globalDir)) {
+        fs.mkdirSync(globalDir, { recursive: true })
+      }
+      const filename = `image-${Date.now()}.${extension || 'png'}`
+      filePath = path.join(globalDir, filename)
+      returnPath = pathToFileURL(filePath).toString() // Converts to file:///... URL
+    } else {
+      const dir = path.dirname(currentFilePath)
+      const assetsDir = path.join(dir, 'assets')
+      
+      if (!fs.existsSync(assetsDir)) {
+        fs.mkdirSync(assetsDir, { recursive: true })
+      }
+
+      const filename = `image-${Date.now()}.${extension || 'png'}`
+      filePath = path.join(assetsDir, filename)
+      returnPath = `./assets/${filename}`
+    }
     
     fs.writeFileSync(filePath, Buffer.from(buffer))
-    
-    return { success: true, path: `./assets/${filename}` }
+    return { success: true, path: returnPath }
   } catch (error) {
     console.error('Failed to save asset:', error)
     return { success: false, error: error.message }
   }
+})
+
+ipcMain.handle('select-image-folder', async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  const { filePaths, canceled } = await dialog.showOpenDialog(win, {
+    properties: ['openDirectory', 'createDirectory']
+  })
+  
+  if (canceled || filePaths.length === 0) {
+    return { success: false }
+  }
+  return { success: true, path: filePaths[0] }
 })
 
 ipcMain.handle('export-pdf', async (event) => {
@@ -419,8 +475,6 @@ ipcMain.handle('rename-path', async (event, oldPath, newPath) => {
     return { success: false, error: error.message }
   }
 })
-
-const { shell } = require('electron')
 
 ipcMain.handle('trash-path', async (event, filePath) => {
   try {
