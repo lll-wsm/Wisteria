@@ -24,10 +24,19 @@ const updateCtrl = (ContentState) => {
   ContentState.prototype.checkNeedRender = function(cursor = this.cursor) {
     const { labels } = this.stateRender
     const { start: cStart, end: cEnd, anchor, focus } = cursor
-    const startBlock = this.getBlock(cStart ? cStart.key : anchor.key)
-    const endBlock = this.getBlock(cEnd ? cEnd.key : focus.key)
-    const startOffset = cStart ? cStart.offset : anchor.offset
-    const endOffset = cEnd ? cEnd.offset : focus.offset
+    const sKey = cStart ? cStart.key : (anchor ? anchor.key : null)
+    const eKey = cEnd ? cEnd.key : (focus ? focus.key : null)
+    const sOffset = cStart ? cStart.offset : (anchor ? anchor.offset : 0)
+    const eOffset = cEnd ? cEnd.offset : (focus ? focus.offset : 0)
+
+    if (!sKey || !eKey || sKey !== eKey || sOffset !== eOffset) {
+      return false
+    }
+
+    const startBlock = this.getBlock(sKey)
+    const endBlock = this.getBlock(eKey)
+    const startOffset = sOffset
+    const endOffset = eOffset
     const NO_NEED_TOKEN_REG = /text|hard_line_break|soft_line_break/
 
     for (const token of tokenizer(startBlock.text, {

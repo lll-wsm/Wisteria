@@ -872,7 +872,12 @@ const paragraphCtrl = (ContentState) => {
     // Handler selectAll in code block. only select all the code block conent.
     // `code block` here is Math, HTML, BLOCK CODE, Mermaid, vega-lite, flowchart, front-matter etc...
     if (startBlock.type === 'span' && startBlock.functionType === 'codeContent') {
-      const { key } = startBlock
+      const { key, text } = startBlock
+      // If the entire code block is already selected, select the whole document
+      if (start.key === key && end.key === key &&
+          start.offset === 0 && end.offset === text.length) {
+        return this.selectAllContent()
+      }
       this.cursor = {
         start: {
           key,
@@ -880,7 +885,7 @@ const paragraphCtrl = (ContentState) => {
         },
         end: {
           key,
-          offset: startBlock.text.length
+          offset: text.length
         },
         isEdit: false
       }
@@ -889,14 +894,20 @@ const paragraphCtrl = (ContentState) => {
     }
     // Handler language input, only select language info only...
     if (startBlock.type === 'span' && startBlock.functionType === 'languageInput') {
+      const { key, text } = startBlock
+      // If the language input is already fully selected, select the whole document
+      if (start.key === key && end.key === key &&
+          start.offset === 0 && end.offset === text.length) {
+        return this.selectAllContent()
+      }
       this.cursor = {
         start: {
-          key: startBlock.key,
+          key,
           offset: 0
         },
         end: {
-          key: startBlock.key,
-          offset: startBlock.text.length
+          key,
+          offset: text.length
         },
         isEdit: false
       }

@@ -550,17 +550,46 @@ class Selection {
       return { node, offset }
     }
 
-    let { node: anchorNode, offset: anchorOffset } = getNodeAndOffset(
-      anchorParagraph,
-      anchor.offset
-    )
-    let { node: focusNode, offset: focusOffset } = getNodeAndOffset(focusParagraph, focus.offset)
+    let anchorNode, anchorOffset
+    if (
+      anchorParagraph.offsetWidth === 0 &&
+      anchorParagraph.offsetHeight === 0 &&
+      anchorParagraph.parentNode &&
+      anchorParagraph.parentNode.tagName === 'FIGURE'
+    ) {
+      anchorNode = anchorParagraph.parentNode
+      anchorOffset = 0
+    } else {
+      const res = getNodeAndOffset(anchorParagraph, anchor.offset)
+      anchorNode = res.node
+      anchorOffset = res.offset
+    }
+
+    let focusNode, focusOffset
+    if (
+      focusParagraph.offsetWidth === 0 &&
+      focusParagraph.offsetHeight === 0 &&
+      focusParagraph.parentNode &&
+      focusParagraph.parentNode.tagName === 'FIGURE'
+    ) {
+      focusNode = focusParagraph.parentNode
+      focusOffset = focusNode.childNodes.length
+    } else {
+      const res = getNodeAndOffset(focusParagraph, focus.offset)
+      focusNode = res.node
+      focusOffset = res.offset
+    }
 
     if (
       anchorNode.nodeType === 3 ||
       (anchorNode.nodeType === 1 && !anchorNode.classList.contains('ag-image-container'))
     ) {
       anchorOffset = Math.min(anchorOffset, anchorNode.textContent.length)
+    }
+    if (
+      focusNode.nodeType === 3 ||
+      (focusNode.nodeType === 1 && !focusNode.classList.contains('ag-image-container'))
+    ) {
       focusOffset = Math.min(focusOffset, focusNode.textContent.length)
     }
 
@@ -575,15 +604,142 @@ class Selection {
     if (node.nodeType === 3) {
       node = node.parentNode
     }
+    if (node.nodeType !== 1) {
+      return false
+    }
+    if (node.closest('[contenteditable="false"]')) {
+      return false
+    }
 
-    return node.closest('.ag-paragraph')
+    return !!node.closest('.ag-paragraph')
+  }
+
+  findNearestValidCursorNode(node, offset, forward = true) {
+    if (typeof offset === 'boolean') {
+      forward = offset
+      offset = 0
+    }
+    const editor = this.doc.querySelector('#ag-editor-id')
+    if (!editor) return null
+
+    if (node !== editor && !editor.contains(node)) {
+      node = editor
+      offset = forward ? 0 : editor.childNodes.length
+    }
+
+    const nodes = []
+    const walk = (n) => {
+      nodes.push(n)
+      if (n.nodeType === 1) {
+        if (n.getAttribute && n.getAttribute('contenteditable') === 'false') {
+          return
+        }
+        for (let i = 0; i < n.childNodes.length; i++) {
+          walk(n.childNodes[i])
+        }
+      }
+    }
+    walk(editor)
+
+    let index = -1
+    if (!nodes.includes(node)) {
+      let startNode = node
+      while (startNode && startNode !== editor && !nodes.includes(startNode)) {
+        startNode = startNode.parentNode
+      }
+      index = nodes.indexOf(startNode)
+    } else {
+      const getLastDescendant = (n) => {
+        let current = n
+        while (current.nodeType === 1) {
+          if (current.getAttribute && current.getAttribute('contenteditable') === 'false') {
+            break
+          }
+          if (current.childNodes.length > 0) {
+            current = current.childNodes[current.childNodes.length - 1]
+          } else {
+            break
+          }
+        }
+        return current
+      }
+
+      if (node.nodeType === 3) {
+        index = nodes.indexOf(node)
+      } else {
+        if (forward) {
+          if (offset < node.childNodes.length) {
+            index = nodes.indexOf(node.childNodes[offset])
+          } else {
+            const lastDesc = getLastDescendant(node)
+            index = nodes.indexOf(lastDesc) + 1
+          }
+        } else {
+          if (offset > 0) {
+            const targetChild = node.childNodes[offset - 1]
+            const lastDesc = getLastDescendant(targetChild)
+            index = nodes.indexOf(lastDesc)
+          } else {
+            index = nodes.indexOf(node)
+          }
+        }
+      }
+    }
+
+    if (index === -1) {
+      index = forward ? 0 : nodes.length - 1
+    }
+
+    if (forward) {
+      for (let i = index; i < nodes.length; i++) {
+        if (this.isValidCursorNode(nodes[i])) {
+          return {
+            node: nodes[i],
+            offset: 0
+          }
+        }
+      }
+    } else {
+      for (let i = index; i >= 0; i--) {
+        if (this.isValidCursorNode(nodes[i])) {
+          return {
+            node: nodes[i],
+            offset: nodes[i].nodeType === 3 ? nodes[i].textContent.length : nodes[i].childNodes.length
+          }
+        }
+      }
+    }
+
+    return null
   }
 
   getCursorRange() {
     let { anchorNode, anchorOffset, focusNode, focusOffset } = this.doc.getSelection()
-    const isAnchorValid = this.isValidCursorNode(anchorNode)
-    const isFocusValid = this.isValidCursorNode(focusNode)
+    const isRangeSelection = anchorNode !== focusNode || anchorOffset !== focusOffset
+    let isAnchorValid = this.isValidCursorNode(anchorNode)
+    let isFocusValid = this.isValidCursorNode(focusNode)
     let needFix = false
+
+    if (!isAnchorValid && anchorNode) {
+      const adjustedAnchor = this.findNearestValidCursorNode(anchorNode, anchorOffset, true)
+      if (adjustedAnchor) {
+        anchorNode = adjustedAnchor.node
+        anchorOffset = adjustedAnchor.offset
+        isAnchorValid = true
+        needFix = true
+      }
+    }
+
+    if (!isFocusValid && focusNode) {
+      const adjustedFocus = this.findNearestValidCursorNode(focusNode, focusOffset, false)
+      if (adjustedFocus) {
+        focusNode = adjustedFocus.node
+        focusOffset = adjustedFocus.offset
+        isFocusValid = true
+        needFix = true
+      }
+    }
+
     if (!isAnchorValid && isFocusValid) {
       needFix = true
       anchorNode = focusNode

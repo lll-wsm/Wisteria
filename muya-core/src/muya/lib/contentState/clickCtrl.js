@@ -185,12 +185,17 @@ const clickCtrl = (ContentState) => {
     }
 
     // change active status when paragraph changed
-    if (start.key !== this.cursor.start.key || end.key !== this.cursor.end.key) {
+    if (
+      (start.key !== this.cursor.start.key || end.key !== this.cursor.end.key) &&
+      (start.key === end.key && start.offset === end.offset)
+    ) {
       needRender = true
     }
 
-    const needMarkedUpdate =
-      this.checkNeedRender(this.cursor) || this.checkNeedRender({ start, end })
+    const isRangeSelection = start.key !== end.key || start.offset !== end.offset
+    const needMarkedUpdate = isRangeSelection
+      ? false
+      : this.checkNeedRender(this.cursor) || this.checkNeedRender({ start, end })
 
     if (needRender) {
       this.cursor = {

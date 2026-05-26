@@ -199,7 +199,7 @@ class ContentState {
       this.partialRender()
     })
     eventCenter.subscribe('blur', () => {
-      this.partialRender()
+      this.partialRender(false)
     })
   }
 
@@ -757,16 +757,21 @@ class ContentState {
   }
 
   lastInDescendant(block) {
-    if (block.children.length === 0 && HAS_TEXT_BLOCK_REG.test(block.type)) {
+    if (!block) return null
+    const children = block.children
+    if (!children) return null
+    if (children.length === 0 && HAS_TEXT_BLOCK_REG.test(block.type)) {
       return block
-    } else if (block.children.length) {
-      const children = block.children
+    } else if (children.length) {
       let lastChild = children[children.length - 1]
-      while (lastChild.editable === false) {
+      while (lastChild && lastChild.editable === false) {
         lastChild = this.getPreSibling(lastChild)
       }
-      return this.lastInDescendant(lastChild)
+      if (lastChild) {
+        return this.lastInDescendant(lastChild)
+      }
     }
+    return block
   }
 
   findPreBlockInLocation(block) {

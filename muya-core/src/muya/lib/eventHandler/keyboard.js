@@ -139,6 +139,16 @@ class Keyboard {
         container.classList.add('ag-meta-or-ctrl')
       }
 
+      // Intercept Cmd/Ctrl+A to use Muya's own selectAll, bypassing the
+      // browser's native selectAll which fails when the last element in the
+      // editable area is contenteditable="false" (e.g. a mermaid preview div).
+      if ((event.metaKey || event.ctrlKey) && event.key === 'a') {
+        event.preventDefault()
+        event.stopPropagation()
+        this.muya.selectAll()
+        return
+      }
+
       if (
         Object.keys(this.shownFloat).length > 0 &&
         (event.key === EVENT_KEYS.Enter ||
@@ -270,9 +280,11 @@ class Keyboard {
           focus.key !== oldFocus.key ||
           focus.offset !== oldFocus.offset
         ) {
-          const needRender =
-            contentState.checkNeedRender(contentState.cursor) ||
-            contentState.checkNeedRender({ start, end })
+          const isRangeSelection = anchor.key !== focus.key || anchor.offset !== focus.offset
+          const needRender = isRangeSelection
+            ? false
+            : contentState.checkNeedRender(contentState.cursor) ||
+              contentState.checkNeedRender({ start, end })
           contentState.cursor = { anchor, focus }
           if (needRender) {
             return contentState.partialRender()
