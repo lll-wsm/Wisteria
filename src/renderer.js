@@ -1,5 +1,256 @@
 import Muya from 'muya-core'
 import 'muya-core/src/muya/lib/assets/styles/index.css'
+import html2pdf from 'html2pdf.js'
+
+import { open, save } from '@tauri-apps/plugin-dialog'
+import { 
+  readTextFile, 
+  writeTextFile, 
+  readDir, 
+  mkdir, 
+  remove, 
+  rename, 
+  writeFile 
+} from '@tauri-apps/plugin-fs'
+import { listen } from '@tauri-apps/api/event'
+import { invoke, convertFileSrc } from '@tauri-apps/api/core'
+import { join, dirname, basename } from '@tauri-apps/api/path'
+
+/**
+ * Tauri API Shim to maintain compatibility with the Electron-based frontend code.
+ * This maps former electronAPI calls to Tauri v2 plugins and commands.
+ */
+const tauriAPI = {
+  // File Ops
+  openFile: async () => {
+    const selected = await open({
+      filters: [{ name: 'Markdown', extensions: ['md'] }]
+    })
+    if (!selected) return { success: false }
+    try {
+      const content = await readTextFile(selected)
+      return { success: true, content, path: selected }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  },
+  saveFile: async (content) => {
+    const path = await save({
+      filters: [{ name: 'Markdown', extensions: ['md'] }]
+    })
+    if (!path) return { success: false }
+    try {
+      await writeTextFile(path, content)
+      return { success: true, path }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  },
+  saveFileAs: async (content) => {
+    const path = await save({
+      filters: [{ name: 'Markdown', extensions: ['md'] }]
+    })
+    if (!path) return { success: false }
+    try {
+      await writeTextFile(path, content)
+      return { success: true, path }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  },
+  openFileWithPath: async (filePath) => {
+    try {
+      const content = await readTextFile(filePath)
+      return { success: true, content, path: filePath }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  },
+  saveFileWithPath: async (filePath, content) => {
+    try {
+      await writeTextFile(filePath, content)
+      return { success: true, path: filePath }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  },
+
+  // Folder & Sidebar Ops
+  openFolder: async () => {
+    const selected = await open({
+      directory: true
+    })
+    if (!selected) return { success: false }
+    try {
+      const tree = await buildTree(selected)
+      return { success: true, path: selected, tree }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  },
+  getFolderTree: async (dirPath) => {
+    try {
+      const tree = await buildTree(dirPath)
+      return { success: true, tree }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  },
+  createFile: async (parentPath, name) => {
+    try {
+      const filename = name.endsWith('.md') ? name : `${name}.md`
+      const filePath = await join(parentPath, filename)
+      await writeTextFile(filePath, '')
+      return { success: true, path: filePath }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  },
+  createFolder: async (parentPath, name) => {
+    try {
+      const dirPath = await join(parentPath, name)
+      await mkdir(dirPath)
+      return { success: true, path: dirPath }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  },
+  renamePath: async (oldPath, newPath) => {
+    try {
+      await rename(oldPath, newPath)
+      return { success: true, path: newPath }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  },
+  trashPath: async (filePath) => {
+    try {
+      return await invoke('trash_path', { path: filePath })
+    } catch (err) {
+      return { success: false, error: typeof err === 'string' ? err : err.message }
+    }
+  },
+
+  // Asset Ops
+  saveAsset: async (buffer, extension, options = {}) => {
+    if (options.mode !== 'global' && !activeFilePath) {
+      return { success: false, error: 'File must be saved before adding assets' }
+    }
+    try {
+      // Ported to Rust command for better performance and consistency
+      const result = await invoke('save_asset', {
+        buffer: Array.from(new Uint8Array(buffer)),
+        extension: extension || 'png',
+        mode: options.mode || 'local',
+        globalPath: options.globalPath || null,
+        activeFilePath: activeFilePath
+      })
+      
+      if (result.success && options.mode === 'global') {
+        // Convert the absolute path returned by Rust to a Tauri-compatible URL
+        result.path = convertFileSrc(result.path)
+      }
+      
+      return result
+    } catch (err) {
+      return { success: false, error: typeof err === 'string' ? err : err.message }
+    }
+  },
+  selectImageFolder: async () => {
+    const selected = await open({
+      directory: true
+    })
+    if (!selected) return { success: false }
+    return { success: true, path: selected }
+  },
+
+  // Export Ops
+  exportPdf: () => {
+    const element = document.querySelector('#editor');
+    const opt = {
+      margin: [0.5, 0.5],
+      filename: activeFilePath ? activeFilePath.split('/').pop().replace('.md', '.pdf') : 'document.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
+  },
+  exportHtml: async (html) => {
+    const path = await save({
+      filters: [{ name: 'HTML', extensions: ['html'] }]
+    })
+    if (!path) return { success: false }
+    try {
+      await writeTextFile(path, html)
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  },
+
+  // Menu Event Listeners
+  onMenuNew: (callback) => listen('menu-new', () => callback()),
+  onMenuOpen: (callback) => listen('menu-open', () => callback()),
+  onMenuOpenFolder: (callback) => listen('menu-open-folder', () => callback()),
+  onMenuSave: (callback) => listen('menu-save', () => callback()),
+  onMenuSaveAs: (callback) => listen('menu-save-as', () => callback()),
+  onMenuPdf: (callback) => listen('menu-pdf', () => callback()),
+  onMenuHtml: (callback) => listen('menu-html', () => callback()),
+  onMenuPreferences: (callback) => listen('menu-preferences', () => callback()),
+  onMenuToggleSidebar: (callback) => listen('menu-toggle-sidebar', () => callback()),
+  onFolderUpdate: (callback) => listen('folder-update', (event) => callback(event.payload))
+}
+
+/**
+ * Recursive helper to build the folder tree for the sidebar.
+ */
+async function buildTree(dirPath) {
+  try {
+    const entries = await readDir(dirPath)
+    const node = {
+      name: await basename(dirPath),
+      path: dirPath,
+      isDir: true,
+      children: []
+    }
+
+    for (const entry of entries) {
+      if (['.git', 'node_modules', '.antigravitycli', '.DS_Store'].includes(entry.name)) {
+        continue
+      }
+      
+      const fullPath = await join(dirPath, entry.name)
+      
+      if (entry.isDirectory) {
+        const childTree = await buildTree(fullPath)
+        if (childTree) {
+          node.children.push(childTree)
+        }
+      } else {
+        const ext = entry.name.split('.').pop().toLowerCase()
+        if (['md', 'markdown', 'txt'].includes(ext)) {
+          node.children.push({
+            name: entry.name,
+            path: fullPath,
+            isDir: false
+          })
+        }
+      }
+    }
+
+    node.children.sort((a, b) => {
+      if (a.isDir && !b.isDir) return -1
+      if (!a.isDir && b.isDir) return 1
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true })
+    })
+
+    return node
+  } catch (error) {
+    console.error(`Failed to build tree for ${dirPath}:`, error)
+    return null
+  }
+}
 
 const container = document.querySelector('#editor')
 const muya = new Muya(container, {
@@ -21,7 +272,7 @@ function getDirname(p) {
 async function handleImageFile(file) {
   const extension = file.name ? file.name.split('.').pop() : (file.type ? file.type.split('/')[1] : 'png')
   const buffer = await file.arrayBuffer()
-  const result = await window.electronAPI.saveAsset(buffer, extension, {
+  const result = await tauriAPI.saveAsset(buffer, extension, {
     mode: currentSettings.imageSaveMode,
     globalPath: currentSettings.imageGlobalPath
   })
@@ -94,10 +345,10 @@ window.addEventListener('click', () => {
 })
 
 // IPC Listeners (from Electron Menu)
-window.electronAPI.onMenuNew(async () => {
+tauriAPI.onMenuNew(async () => {
   if (activeFilePath) {
     try {
-      await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
+      await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
     } catch (e) {
       console.error(e)
     }
@@ -109,15 +360,15 @@ window.electronAPI.onMenuNew(async () => {
   updateActiveFileHighlight()
 })
 
-window.electronAPI.onMenuOpen(async () => {
+tauriAPI.onMenuOpen(async () => {
   if (activeFilePath) {
     try {
-      await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
+      await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
     } catch (e) {
       console.error(e)
     }
   }
-  const result = await window.electronAPI.openFile()
+  const result = await tauriAPI.openFile()
   if (result.success && result.path) {
     activeFilePath = result.path
     updateBaseHref(activeFilePath)
@@ -127,24 +378,24 @@ window.electronAPI.onMenuOpen(async () => {
   }
 })
 
-window.electronAPI.onMenuOpenFolder(() => {
+tauriAPI.onMenuOpenFolder(() => {
   handleOpenFolder()
 })
 
-window.electronAPI.onMenuSave(async () => {
+tauriAPI.onMenuSave(async () => {
   if (autoSaveTimer) {
     clearTimeout(autoSaveTimer)
   }
   if (activeFilePath) {
     showSaveIndicator('Saving...')
     try {
-      await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
+      await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
       showSaveIndicator('Saved', 1500)
     } catch (err) {
       showSaveIndicator('Save failed', 2000, true)
     }
   } else {
-    const result = await window.electronAPI.saveFile(muya.markdown)
+    const result = await tauriAPI.saveFile(muya.markdown)
     if (result.success && result.path) {
       activeFilePath = result.path
       updateBaseHref(activeFilePath)
@@ -154,11 +405,11 @@ window.electronAPI.onMenuSave(async () => {
   }
 })
 
-window.electronAPI.onMenuSaveAs(async () => {
+tauriAPI.onMenuSaveAs(async () => {
   if (autoSaveTimer) {
     clearTimeout(autoSaveTimer)
   }
-  const result = await window.electronAPI.saveFileAs(muya.markdown)
+  const result = await tauriAPI.saveFileAs(muya.markdown)
   if (result.success && result.path) {
     activeFilePath = result.path
     updateBaseHref(activeFilePath)
@@ -167,17 +418,21 @@ window.electronAPI.onMenuSaveAs(async () => {
   }
 })
 
-window.electronAPI.onMenuPreferences(() => {
+tauriAPI.onMenuPreferences(() => {
   openPreferencesModal()
 })
 
-window.electronAPI.onMenuPdf(() => {
-  window.electronAPI.exportPdf()
+tauriAPI.onMenuPdf(() => {
+  tauriAPI.exportPdf()
 })
 
-window.electronAPI.onMenuHtml(async () => {
+tauriAPI.onMenuHtml(async () => {
   const html = await muya.exportStyledHTML({ title: 'Wisteria Document' });
-  window.electronAPI.exportHtml(html);
+  tauriAPI.exportHtml(html);
+})
+
+tauriAPI.onMenuToggleSidebar(() => {
+  toggleSidebar()
 })
 
 // Floating Menu Event Logic
@@ -267,9 +522,9 @@ document.querySelector('#floating-menu').addEventListener('click', async (e) => 
       break
     case 'menu-save':
       if (activeFilePath) {
-        await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
+        await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
       } else {
-        const result = await window.electronAPI.saveFile(muya.markdown)
+        const result = await tauriAPI.saveFile(muya.markdown)
         if (result.success && result.path) {
           activeFilePath = result.path
           updateActiveFileHighlight()
@@ -277,18 +532,18 @@ document.querySelector('#floating-menu').addEventListener('click', async (e) => 
       }
       break
     case 'menu-save-as':
-      const result = await window.electronAPI.saveFileAs(muya.markdown)
+      const result = await tauriAPI.saveFileAs(muya.markdown)
       if (result.success && result.path) {
         activeFilePath = result.path
         updateActiveFileHighlight()
       }
       break
     case 'menu-pdf':
-      window.electronAPI.exportPdf()
+      tauriAPI.exportPdf()
       break
     case 'menu-html':
       const html = await muya.exportStyledHTML({ title: 'Wisteria Document' });
-      window.electronAPI.exportHtml(html);
+      tauriAPI.exportHtml(html);
       break
     case 'menu-theme':
       const isDark = document.body.classList.toggle('theme-dark')
@@ -398,12 +653,9 @@ function updateBaseHref(filePath) {
     if (!dir && filePath.includes('\\')) {
       dir = filePath.substring(0, filePath.lastIndexOf('\\'))
     }
-    dir = dir.replace(/\\/g, '/')
-    if (dir.match(/^[a-zA-Z]:/)) {
-      baseElement.href = `file:///${dir}/`
-    } else {
-      baseElement.href = `file://${dir}/`
-    }
+    // In Tauri, we use convertFileSrc to allow loading local assets via the asset protocol
+    const baseUrl = convertFileSrc(dir + '/')
+    baseElement.href = baseUrl
   } else {
     baseElement.removeAttribute('href')
   }
@@ -427,7 +679,7 @@ function debounceAutoSave() {
     isSaving = true
     showSaveIndicator('Saving...')
     try {
-      await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
+      await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
       showSaveIndicator('Saved', 1500)
     } catch (err) {
       console.error('Auto-save failed:', err)
@@ -580,7 +832,7 @@ settingsFontFamily.addEventListener('change', (e) => {
 })
 
 browseImagePathBtn.addEventListener('click', async () => {
-  const result = await window.electronAPI.selectImageFolder()
+  const result = await tauriAPI.selectImageFolder()
   if (result.success && result.path) {
     settingsImagePath.value = result.path
   }
@@ -716,13 +968,13 @@ async function selectFile(filePath) {
 
   if (activeFilePath) {
     try {
-      await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
+      await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
     } catch (err) {
       console.error('Auto-save failed:', err)
     }
   }
 
-  const result = await window.electronAPI.openFileWithPath(filePath)
+  const result = await tauriAPI.openFileWithPath(filePath)
   if (result.success) {
     activeFilePath = filePath
     updateBaseHref(filePath)
@@ -750,19 +1002,19 @@ function updateActiveFileHighlight() {
 async function handleOpenFolder() {
   if (activeFilePath) {
     try {
-      await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
+      await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
     } catch (e) {
       console.error(e)
     }
   }
 
-  const result = await window.electronAPI.openFolder()
+  const result = await tauriAPI.openFolder()
   if (result.success && result.path) {
     activeFolderPath = result.path
     expandedPaths.add(activeFolderPath)
 
     // Fetch and render initial tree
-    const treeResult = await window.electronAPI.getFolderTree(activeFolderPath)
+    const treeResult = await tauriAPI.getFolderTree(activeFolderPath)
     if (treeResult.success) {
       renderTree(treeResult.tree)
     }
@@ -787,7 +1039,7 @@ if (openFolderBtn) {
 }
 
 // Watcher listener for live updates
-window.electronAPI.onFolderUpdate((tree) => {
+tauriAPI.onFolderUpdate((tree) => {
   renderTree(tree)
 })
 
@@ -1173,12 +1425,12 @@ function showInlineInputForCreate(parentDir, isDir) {
     }
 
     if (isDir) {
-      const result = await window.electronAPI.createFolder(parentDir, name)
+      const result = await tauriAPI.createFolder(parentDir, name)
       if (!result.success) {
         alert(result.error || 'Failed to create folder')
       }
     } else {
-      const result = await window.electronAPI.createFile(parentDir, name)
+      const result = await tauriAPI.createFile(parentDir, name)
       if (result.success && result.path) {
         await selectFile(result.path)
       } else if (!result.success) {
@@ -1259,7 +1511,7 @@ function showInlineInputForRename(targetPath, isDir) {
 
     const pathPrefix = getDirname(targetPath)
     const newPath = `${pathPrefix}/${newName}`
-    const result = await window.electronAPI.renamePath(targetPath, newPath)
+    const result = await tauriAPI.renamePath(targetPath, newPath)
     if (result.success) {
       if (isDir) {
         expandedPaths.forEach(p => {
@@ -1335,7 +1587,7 @@ sidebarContextMenu.addEventListener('click', async (e) => {
     case 'ctx-delete': {
       const name = contextMenuTargetPath.substring(contextMenuTargetPath.lastIndexOf('/') + 1)
       if (confirm(`Are you sure you want to move "${name}" to Trash?`)) {
-        const result = await window.electronAPI.trashPath(contextMenuTargetPath)
+        const result = await tauriAPI.trashPath(contextMenuTargetPath)
         if (result.success) {
           if (activeFilePath === contextMenuTargetPath) {
             activeFilePath = null
