@@ -4,48 +4,17 @@
   "version": "0.1.0",
   "main": "main.js",
   "scripts": {
-    "dev": "node start-dev.js",
+    "dev": "tauri dev",
+    "build": "tauri build",
     "vite": "vite",
-    "build": "vite build",
-    "start": "electron .",
-    "dist": "npm run build && electron-builder"
-  },
-  "build": {
-    "appId": "com.wisteria.editor",
-    "productName": "Wisteria",
-    "copyright": "Copyright © 2026 Wisteria",
-    "mac": {
-      "category": "public.app-category.productivity",
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64"
-          ]
-        }
-      ],
-      "icon": "icons/wisteria.icns"
-    },
-    "directories": {
-      "output": "dist-app"
-    },
-    "files": [
-      "dist/**/*",
-      "main.js",
-      "preload.js",
-      "package.json",
-      "icons/wisteria.icns",
-      "!muya-core/src",
-      "!muya-core/node_modules",
-      "!**/node_modules/*/{test,tests,doc,docs,benchmark,demo,example,examples}",
-      "!**/*.{map,md,markdown,log,txt,DS_Store,ts}"
-    ],
-    "asar": true,
-    "compression": "maximum"
+    "vite-build": "vite build"
   },
   "devDependencies": {
-    "electron": "^30.0.0",
-    "electron-builder": "^24.13.3",
+    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/cli": "^2.11.2",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
+    "@tauri-apps/plugin-fs": "^2.5.1",
+    "@tauri-apps/plugin-shell": "^2.3.5",
     "path-browserify": "^1.0.1",
     "vite": "^5.0.0"
   },
