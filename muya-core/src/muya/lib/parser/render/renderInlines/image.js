@@ -207,52 +207,32 @@ export default function image(h, cursor, block, token, outerClass) {
     const isTauri = typeof window !== 'undefined' && (!!window.__TAURI_IPC__ || !!window.__TAURI__)
     const inputId = `file-input-${block.key}-${token.range.start}`
 
-    const fileIcon = h('label.ag-image-file-icon', {
+    const fileIcon = h('span.ag-image-file-icon', {
       attrs: {
-        for: isTauri ? undefined : inputId,
         contenteditable: 'false',
         title: '选择本地图片'
       },
-      style: {
-        cursor: 'pointer'
-      },
       on: {
-        mousedown: async (event) => {
-          // Block browser default focus changes and stop propagation to prevent editor re-renders
+        click: async (event) => {
           event.preventDefault()
           event.stopPropagation()
-          
-          alert('[Wisteria Debug] mousedown triggered! isTauri=' + isTauri + ', imagePathPicker=' + (this.muya.options ? typeof this.muya.options.imagePathPicker : 'no options'))
 
-          if (isTauri) {
-            if (this.muya.options.imagePathPicker) {
-              try {
-                const path = await this.muya.options.imagePathPicker()
-                alert('[Wisteria Debug] Tauri dialog returned: ' + path)
-                if (path) {
-                  handlePick(path)
-                }
-              } catch (err) {
-                alert('[Wisteria Debug] Tauri imagePathPicker error: ' + err.message)
-                console.warn('Tauri imagePathPicker failed:', err)
+          if (this.muya.options.imagePathPicker) {
+            try {
+              const path = await this.muya.options.imagePathPicker()
+              if (path) {
+                handlePick(path)
               }
-            } else {
-              alert('[Wisteria Debug] imagePathPicker is not defined in options!')
+            } catch (err) {
+              console.error('Tauri imagePathPicker error:', err)
             }
           } else {
-            // Programmatically trigger input.click() synchronously within the mousedown user gesture
+            // Web fallback: trigger hidden input
             const input = document.getElementById(inputId)
             if (input) {
-              alert('[Wisteria Debug] Web fallback: clicking hidden input')
               input.click()
-            } else {
-              alert('[Wisteria Debug] Web fallback error: input element not found!')
             }
           }
-        },
-        click: (event) => {
-          event.preventDefault()
-          event.stopPropagation()
         }
       }
     }, [

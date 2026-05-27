@@ -115,12 +115,27 @@ class ClickEvent {
         return contentState.deleteImage(imageInfo)
       }
 
-      // Handle click imagewrapper when image load failed.
+      // Handle click imagewrapper when it's empty or image load failed.
       if (
         imageWrapper &&
-        imageWrapper.classList.contains('ag-image-fail')
+        (imageWrapper.classList.contains('ag-empty-image') ||
+          imageWrapper.classList.contains('ag-image-fail'))
       ) {
         const imageInfo = getImageInfo(imageWrapper)
+        // For empty images with a file picker configured, open the picker directly.
+        // Otherwise show the ImageSelector UI.
+        const { imagePathPicker } = this.muya.options
+        if (imageWrapper.classList.contains('ag-empty-image') && imagePathPicker) {
+          event.preventDefault()
+          event.stopPropagation()
+          imagePathPicker().then(path => {
+            if (path) {
+              contentState.replaceImage(imageInfo, { alt: '', src: path, title: '' })
+              eventCenter.dispatch('stateChange')
+            }
+          }).catch(() => {})
+          return
+        }
         eventCenter.dispatch('muya-image-selector', {
           reference: imageWrapper,
           imageInfo,
