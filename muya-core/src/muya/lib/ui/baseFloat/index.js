@@ -80,14 +80,6 @@ class BaseFloat {
       this.popper && this.popper.update()
     })
 
-    // const ro = new ResizeObserver(entries => {
-    //   for (const entry of entries) {
-    //     const { offsetWidth, offsetHeight } = entry.target
-    //     Object.assign(floatBox.style, { width: `${offsetWidth + 2}px`, height: `${offsetHeight + 2}px` })
-    //     this.popper && this.popper.update()
-    //   }
-    // })
-    // ro.observe(container)
     this.floatBox = floatBox
     this.container = container
   }
@@ -162,17 +154,22 @@ class BaseFloat {
     this.status = true
     floatBox.style.opacity = '1'
     floatBox.style.right = 'auto'
-    eventCenter.dispatch('muya-float', this, true)
 
+    // Force popper to update synchronously if possible
     if (this.popper && popperOk) {
       try {
         this.popper.forceUpdate()
-      } catch (e) {}
+      } catch (e) {
+        console.error('Popper forceUpdate failed:', e)
+      }
     }
 
-    if (!popperOk) {
+    // Fallback positioning if Popper failed or is missing critical attributes
+    if (!popperOk || !floatBox.hasAttribute('data-popper-placement')) {
       this.positionFallback(reference, placement)
     }
+
+    eventCenter.dispatch('muya-float', this, true)
   }
 
   positionFallback(reference, placement) {
@@ -181,12 +178,13 @@ class BaseFloat {
 
     const refRect = reference.getBoundingClientRect()
     const fbRect = floatBox.getBoundingClientRect()
+    const offset = 12
 
-    let top = refRect.bottom + 12
+    let top = refRect.bottom + offset
     let left = refRect.left
 
     if (placement && placement.startsWith('top')) {
-      top = refRect.top - fbRect.height - 12
+      top = refRect.top - fbRect.height - offset
     }
     if (placement && placement.includes('-end')) {
       left = refRect.right - fbRect.width
@@ -194,18 +192,7 @@ class BaseFloat {
 
     floatBox.style.top = `${top}px`
     floatBox.style.left = `${left}px`
-    floatBox.style.transform = 'none'
-    floatBox.setAttribute('data-popper-placement', placement || 'bottom')
-  }
-
-  destroy() {
-    if (this.popper && this.popper.destroy) {
-      this.popper.destroy()
-    }
-    if (this.resizeDetector && this.container) {
-      this.resizeDetector.uninstall(this.container)
-    }
-    this.floatBox.remove()
+    floatBox.setAttribute('data-popper-placement', placement || 'bottom-start')
   }
 }
 
