@@ -212,28 +212,8 @@ export default function image(h, cursor, block, token, outerClass) {
         contenteditable: 'false',
         title: '选择本地图片'
       },
-      on: {
-        click: async (event) => {
-          event.preventDefault()
-          event.stopPropagation()
-
-          if (this.muya.options.imagePathPicker) {
-            try {
-              const path = await this.muya.options.imagePathPicker()
-              if (path) {
-                handlePick(path)
-              }
-            } catch (err) {
-              console.error('Tauri imagePathPicker error:', err)
-            }
-          } else {
-            // Web fallback: trigger hidden input
-            const input = document.getElementById(inputId)
-            if (input) {
-              input.click()
-            }
-          }
-        }
+      style: {
+        cursor: 'pointer'
       }
     }, [
       // SVG folder icon

@@ -943,3 +943,116 @@ body.sidebar-open #ag-editor-id {
 .muya-container {
   font-size: var(--font-size, 16px);
 }
+
+/* Muya Floating UI Components (FormatPicker, FrontMenu, etc.) */
+.ag-float-wrapper {
+  background-color: var(--menu-bg) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid var(--menu-border) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 12px !important;
+  padding: 4px !important;
+}
+
+/* Fix broken PNG icons (Squares issue) */
+.ag-format-picker li.item .icon-wrapper i.icon,
+.ag-front-menu li.item .icon-wrapper i.icon,
+.ag-image-icon-success i.icon,
+.ag-image-icon-fail i.icon,
+.ag-image-icon-close i.icon {
+  width: 16px !important;
+  height: 16px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  overflow: visible !important;
+}
+
+.ag-format-picker li.item .icon-wrapper i.icon i.icon-inner,
+.ag-front-menu li.item .icon-wrapper i.icon i.icon-inner {
+  display: block !important;
+  width: 16px !important;
+  height: 16px !important;
+  background-size: contain !important;
+  background-position: center !important;
+  filter: none !important; /* Disable broken shadow trick */
+  left: 0 !important;      /* Reset broken offset */
+  position: relative !important;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+/* Specific styling for the Format Picker (the rectangle bubble) */
+.ag-format-picker {
+  height: 36px !important; /* Slightly taller for modern feel */
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 8px !important;
+}
+
+.ag-format-picker li.item {
+  border-radius: 6px !important;
+  margin: 0 2px !important;
+  transition: background-color 0.2s !important;
+}
+
+.ag-format-picker li.item:hover {
+  background-color: var(--editorColor10) !important;
+}
+
+.ag-format-picker li.item.active .icon-inner {
+  opacity: 1 !important;
+  filter: sepia(1) saturate(10) hue-rotate(240deg) !important; /* Tint to accent color if possible */
+}
+
+/* Front Menu (The icon at the start of the line) */
+.ag-front-icon-button {
+  width: 24px !important;
+  height: 24px !important;
+  opacity: 0.3;
+  transition: opacity 0.3s, background-color 0.3s;
+  border-radius: 4px;
+}
+
+.ag-front-icon-button:hover {
+  opacity: 1;
+  background-color: var(--editorColor04);
+}
+
+/* 
+   Selection Highlighting Normalization:
+   Only style the inline text elements and make block containers transparent.
+   This prevents full-width and between-line selection shadows when selecting multiple lines.
+*/
+#editor ::selection {
+  background-color: var(--selectionColor) !important;
+  color: inherit !important;
+}
+
+#editor p::selection,
+#editor div::selection,
+#editor pre::selection,
+#editor figure::selection,
+#editor li::selection,
+#editor ul::selection,
+#editor ol::selection,
+#editor h1::selection,
+#editor h2::selection,
+#editor h3::selection,
+#editor h4::selection,
+#editor h5::selection,
+#editor h6::selection,
+#editor table::selection,
+#editor tbody::selection,
+#editor thead::selection,
+#editor tr::selection,
+#editor th::selection,
+#editor td::selection,
+#editor .ag-paragraph-content::selection,
+#editor .ag-atx-line::selection,
+#editor .ag-thematic-break-line::selection,
+#editor .ag-line-end::selection,
+#editor .ag-line-end *::selection {
+  background: transparent !important;
+}

@@ -122,27 +122,44 @@ class ClickEvent {
           imageWrapper.classList.contains('ag-image-fail'))
       ) {
         const imageInfo = getImageInfo(imageWrapper)
-        // For empty images with a file picker configured, open the picker directly.
-        // Otherwise show the ImageSelector UI.
-        const { imagePathPicker } = this.muya.options
-        if (imageWrapper.classList.contains('ag-empty-image') && imagePathPicker) {
+        const isFileIcon = target.closest('.ag-image-file-icon')
+
+        // 1. If it's an empty image and the folder icon button is clicked:
+        if (imageWrapper.classList.contains('ag-empty-image') && isFileIcon) {
           event.preventDefault()
           event.stopPropagation()
-          imagePathPicker().then(path => {
-            if (path) {
-              contentState.replaceImage(imageInfo, { alt: '', src: path, title: '' })
-              eventCenter.dispatch('stateChange')
+          const { imagePathPicker } = this.muya.options
+          const isTauri = typeof window !== 'undefined' && (!!window.__TAURI_IPC__ || !!window.__TAURI__)
+
+          if (isTauri && imagePathPicker) {
+            imagePathPicker().then(path => {
+              if (path) {
+                contentState.replaceImage(imageInfo, { alt: '', src: path, title: '' })
+                eventCenter.dispatch('stateChange')
+              }
+            }).catch(() => {})
+          } else {
+            // Web fallback: click the hidden file input next to the label
+            const inputId = `file-input-${imageInfo.key}-${imageInfo.token.range.start}`
+            const input = document.getElementById(inputId)
+            if (input) {
+              input.click()
             }
-          }).catch(() => {})
+          }
           return
         }
-        eventCenter.dispatch('muya-image-selector', {
-          reference: imageWrapper,
-          imageInfo,
-          cb: () => {}
-        })
-        event.preventDefault()
-        return event.stopPropagation()
+
+        // 2. If it's a failed image, show the ImageSelector popup.
+        // (Empty images fall through if not clicking the folder icon, allowing cursor positioning on placeholders)
+        if (imageWrapper.classList.contains('ag-image-fail')) {
+          eventCenter.dispatch('muya-image-selector', {
+            reference: imageWrapper,
+            imageInfo,
+            cb: () => {}
+          })
+          event.preventDefault()
+          return event.stopPropagation()
+        }
       }
 
       const markedImageText = target.previousElementSibling

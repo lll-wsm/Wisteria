@@ -134,7 +134,11 @@ div.ag-show-quick-insert-hint
 }
 
 .ag-line-end {
-  display: block;
+  display: inline;
+}
+
+.ag-line-end::selection {
+  background: transparent;
 }
 
 *:not(.ag-hide)::selection,
