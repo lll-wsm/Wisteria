@@ -22,6 +22,7 @@
   --editorColor30: rgba(44, 62, 80, 0.3);
   --editorColor50: rgba(44, 62, 80, 0.5);
   --editorColor80: rgba(44, 62, 80, 0.8);
+  --hrColor: var(--editorColor30);
   
   --themeColor: var(--accent-color);
   --editorBgColor: var(--bg-color);

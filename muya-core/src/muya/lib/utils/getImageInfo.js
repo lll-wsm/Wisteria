@@ -4,10 +4,20 @@ import { tokenizer } from '../parser'
 
 export const getImageInfo = image => {
   const paragraph = findNearestParagraph(image)
-  const raw = image.getAttribute('data-raw')
-  const offset = getOffsetOfParagraph(image, paragraph)
+  const raw = image.getAttribute('data-raw') || ''
+  const offset = paragraph ? getOffsetOfParagraph(image, paragraph) : 0
   const tokens = tokenizer(raw)
-  const token = tokens[0]
+  const token = tokens[0] || {
+    type: 'image',
+    raw: raw,
+    marker: '![',
+    srcAndTitle: '',
+    attrs: { src: '', title: '', alt: '' },
+    src: '',
+    title: '',
+    alt: '',
+    backlash: { first: '', second: '' }
+  }
   token.range = {
     start: offset,
     end: offset + raw.length

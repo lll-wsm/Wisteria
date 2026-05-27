@@ -90,6 +90,10 @@ export default function renderLeafBlock(parent, block, activeBlocks, matches, us
     style: {}
   }
 
+  if (type === 'hr') {
+    data.dataset.role = 'hr'
+  }
+
   let children = ''
 
   if (text) {

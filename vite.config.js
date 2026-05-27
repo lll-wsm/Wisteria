@@ -7,16 +7,17 @@ export default defineConfig({
     alias: {
       'path': 'path-browserify',
       'url': path.resolve(__dirname, 'muya-core/src/mocks/url.js'),
-      'zlib': path.resolve(__dirname, 'muya-core/src/mocks/zlib.js')
+      'zlib': path.resolve(__dirname, 'muya-core/src/mocks/zlib.js'),
+      'stream': 'stream-browserify',
+      'buffer': 'buffer'
     }
   },
   define: {
-    'process.env': {}
-  },
-  optimizeDeps: {
-    exclude: ['muya-core']
+    'process.env': {},
+    'global': 'window'
   },
   server: {
-    port: 5173
+    port: 5173,
+    strictPort: true
   }
 })

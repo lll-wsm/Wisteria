@@ -19,6 +19,28 @@ class BaseFloat {
     this.name = name
     this.muya = muya
     this.options = Object.assign({}, defaultOptions(), options)
+    
+    // Normalize modifiers for Popper v2 compatibility (object to array of objects)
+    if (this.options.modifiers && !Array.isArray(this.options.modifiers)) {
+      const normalized = []
+      if (this.options.modifiers.offset) {
+        let offsetVal = [0, 12] // Default offset skidding, distance
+        const rawOffset = this.options.modifiers.offset.offset
+        if (typeof rawOffset === 'string') {
+          offsetVal = rawOffset.split(',').map(s => parseInt(s.trim(), 10))
+        } else if (Array.isArray(rawOffset)) {
+          offsetVal = rawOffset
+        }
+        normalized.push({
+          name: 'offset',
+          options: {
+            offset: offsetVal
+          }
+        })
+      }
+      this.options.modifiers = normalized
+    }
+
     this.status = false
     this.floatBox = null
     this.container = null
@@ -106,6 +128,12 @@ class BaseFloat {
       this.popper.destroy()
     }
     this.cb = noop
+    this.floatBox.removeAttribute('data-popper-placement')
+    this.floatBox.style.opacity = ''
+    this.floatBox.style.right = ''
+    this.floatBox.style.top = ''
+    this.floatBox.style.left = ''
+    this.floatBox.style.transform = ''
     eventCenter.dispatch('muya-float', this, false)
     this.lastScrollTop = null
   }
@@ -114,16 +142,60 @@ class BaseFloat {
     const { floatBox } = this
     const { eventCenter } = this.muya
     const { placement, modifiers } = this.options
+
     if (this.popper && this.popper.destroy) {
       this.popper.destroy()
     }
     this.cb = cb
-    this.popper = createPopper(reference, floatBox, {
-      placement,
-      modifiers
-    })
+
+    let popperOk = false
+    try {
+      this.popper = createPopper(reference, floatBox, {
+        placement,
+        modifiers
+      })
+      popperOk = true
+    } catch (e) {
+      this.popper = null
+    }
+
     this.status = true
+    floatBox.style.opacity = '1'
+    floatBox.style.right = 'auto'
     eventCenter.dispatch('muya-float', this, true)
+
+    if (this.popper && popperOk) {
+      try {
+        this.popper.forceUpdate()
+      } catch (e) {}
+    }
+
+    if (!popperOk) {
+      this.positionFallback(reference, placement)
+    }
+  }
+
+  positionFallback(reference, placement) {
+    const { floatBox } = this
+    if (!reference || !floatBox) return
+
+    const refRect = reference.getBoundingClientRect()
+    const fbRect = floatBox.getBoundingClientRect()
+
+    let top = refRect.bottom + 12
+    let left = refRect.left
+
+    if (placement && placement.startsWith('top')) {
+      top = refRect.top - fbRect.height - 12
+    }
+    if (placement && placement.includes('-end')) {
+      left = refRect.right - fbRect.width
+    }
+
+    floatBox.style.top = `${top}px`
+    floatBox.style.left = `${left}px`
+    floatBox.style.transform = 'none'
+    floatBox.setAttribute('data-popper-placement', placement || 'bottom')
   }
 
   destroy() {

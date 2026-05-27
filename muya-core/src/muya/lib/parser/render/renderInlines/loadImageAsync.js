@@ -46,10 +46,15 @@ export default function loadImageAsync(imageInfo, attrs, className, imageClass) 
     const img = document.createElement('img')
     let dispMsec = Date.now()
     let touchMsec = dispMsec
-    if (/^file:\/\//.test(src)) {
-      domsrc = src + '?msec=' + dispMsec
+    let cleanSrc = src
+    if (this.muya.contentState && typeof this.muya.contentState.correctImageSrc === 'function') {
+      cleanSrc = this.muya.contentState.correctImageSrc(src)
+    }
+
+    if (/^file:\/\//.test(src) || cleanSrc.startsWith('tauri-asset:') || cleanSrc.startsWith('asset:') || cleanSrc.includes('asset.localhost')) {
+      domsrc = cleanSrc + '?msec=' + dispMsec
     } else {
-      domsrc = src
+      domsrc = cleanSrc
     }
     img.src = domsrc
     if (attrs.alt) img.alt = attrs.alt.replace(/[`*{}[\]()#+\-.!_>~:|<>$]/g, '')

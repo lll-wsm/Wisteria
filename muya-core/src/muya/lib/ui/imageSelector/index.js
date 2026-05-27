@@ -62,11 +62,19 @@ class ImageSelector extends BaseFloat {
           this.state.src = imageSrc.substring(protocolLen)
         }
 
-        this.show(reference, cb)
         this.render()
+        // Sync floatBox dimensions before Popper positioning — the CSS default
+        // is 110px/overflow:hidden but our container is 500px wide. The resizeDetector
+        // updates these asynchronously; we need the correct size immediately.
+        const { offsetWidth, offsetHeight } = this.container
+        Object.assign(this.floatBox.style, {
+          width: `${offsetWidth}px`,
+          height: `${offsetHeight}px`
+        })
+        this.show(reference, cb)
 
         // Auto focus and select all content of the `src.input` element.
-        const input = this.imageSelectorContainer.querySelector('input.src')
+        const input = this.container.querySelector('input.src')
         if (input) {
           // Force value update - else Snabbdom might not update the value attribute when we re-open the image selector
           // as it does not listen to users dirtying the input value.
@@ -107,7 +115,7 @@ class ImageSelector extends BaseFloat {
 
   srcInputKeyDown(event) {
     const { imagePathPicker } = this.muya
-    if (!imagePathPicker.status) {
+    if (!imagePathPicker || !imagePathPicker.status) {
       if (event.key === EVENT_KEYS.Enter) {
         event.stopPropagation()
         this.handleLinkButtonClick()
@@ -147,7 +155,7 @@ class ImageSelector extends BaseFloat {
     // Handle special case where the user selects a directory by pressing enter
     const value = EVENT_KEYS.Enter ? this.state.src : event.target.value
     const { eventCenter } = this.muya
-    const reference = this.imageSelectorContainer.querySelector('input.src')
+    const reference = this.container.querySelector('input.src')
     const cb = (item) => {
       const { text } = item
 
@@ -294,6 +302,8 @@ class ImageSelector extends BaseFloat {
     } else {
       const altInput = h('input.alt', {
         props: {
+          id: 'ag-image-selector-alt',
+          name: 'alt',
           placeholder: t('editor.image.selector.inputs.alt'),
           value: alt
         },
@@ -311,6 +321,8 @@ class ImageSelector extends BaseFloat {
       })
       const srcInput = h('input.src', {
         props: {
+          id: 'ag-image-selector-src',
+          name: 'src',
           placeholder: t('editor.image.selector.inputs.src'),
           value: src
         },
@@ -331,6 +343,8 @@ class ImageSelector extends BaseFloat {
       })
       const titleInput = h('input.title', {
         props: {
+          id: 'ag-image-selector-title',
+          name: 'title',
           placeholder: t('editor.image.selector.inputs.title'),
           value: title
         },
@@ -391,6 +405,7 @@ class ImageSelector extends BaseFloat {
     } else {
       patch(imageSelectorContainer, vnode)
     }
+    this.imageSelectorContainer = vnode.elm
     this.oldVnode = vnode
   }
 }

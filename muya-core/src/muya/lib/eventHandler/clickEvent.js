@@ -101,14 +101,40 @@ class ClickEvent {
         })
       }
       // Handle image and inline math preview click
+      const imageWrapper = target.closest(`.${CLASS_OR_ID.AG_INLINE_IMAGE}`)
+      const imageDelete =
+        target.closest('.ag-image-icon-delete') || target.closest('.ag-image-icon-close')
+
+      // Handle delete inline image by click delete icon.
+      if (imageDelete && imageWrapper) {
+        const imageInfo = getImageInfo(imageWrapper)
+        event.preventDefault()
+        event.stopPropagation()
+        // hide image selector if needed.
+        eventCenter.dispatch('muya-image-selector', { reference: null })
+        return contentState.deleteImage(imageInfo)
+      }
+
+      // Handle click imagewrapper when image load failed.
+      if (
+        imageWrapper &&
+        imageWrapper.classList.contains('ag-image-fail')
+      ) {
+        const imageInfo = getImageInfo(imageWrapper)
+        eventCenter.dispatch('muya-image-selector', {
+          reference: imageWrapper,
+          imageInfo,
+          cb: () => {}
+        })
+        event.preventDefault()
+        return event.stopPropagation()
+      }
+
       const markedImageText = target.previousElementSibling
       const mathRender = target.closest(`.${CLASS_OR_ID.AG_MATH_RENDER}`)
       const rubyRender = target.closest(`.${CLASS_OR_ID.AG_RUBY_RENDER}`)
-      const imageWrapper = target.closest(`.${CLASS_OR_ID.AG_INLINE_IMAGE}`)
       const codeCopy = target.closest('.ag-code-copy')
       const footnoteBackLink = target.closest('.ag-footnote-backlink')
-      const imageDelete =
-        target.closest('.ag-image-icon-delete') || target.closest('.ag-image-icon-close')
       const mathText = mathRender && mathRender.previousElementSibling
       const rubyText = rubyRender && rubyRender.previousElementSibling
       if (markedImageText && markedImageText.classList.contains(CLASS_OR_ID.AG_IMAGE_MARKED_TEXT)) {
@@ -127,15 +153,6 @@ class ClickEvent {
         event.stopPropagation()
         event.preventDefault()
         return this.muya.contentState.copyCodeBlock(event)
-      }
-      // Handle delete inline iamge by click delete icon.
-      if (imageDelete && imageWrapper) {
-        const imageInfo = getImageInfo(imageWrapper)
-        event.preventDefault()
-        event.stopPropagation()
-        // hide image selector if needed.
-        eventCenter.dispatch('muya-image-selector', { reference: null })
-        return contentState.deleteImage(imageInfo)
       }
 
       if (footnoteBackLink) {
@@ -187,27 +204,6 @@ class ClickEvent {
         return
       }
 
-      // Handle click imagewrapper when it's empty or image load failed.
-      if (
-        imageWrapper &&
-        (imageWrapper.classList.contains('ag-empty-image') ||
-          imageWrapper.classList.contains('ag-image-fail'))
-      ) {
-        const rect = imageWrapper.getBoundingClientRect()
-        const reference = {
-          getBoundingClientRect() {
-            return rect
-          }
-        }
-        const imageInfo = getImageInfo(imageWrapper)
-        eventCenter.dispatch('muya-image-selector', {
-          reference,
-          imageInfo,
-          cb: () => {}
-        })
-        event.preventDefault()
-        return event.stopPropagation()
-      }
 
       if (target.closest('div.ag-container-preview') || target.closest('div.ag-html-preview')) {
         event.stopPropagation()

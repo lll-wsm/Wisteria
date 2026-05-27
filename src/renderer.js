@@ -1,5 +1,28 @@
 import Muya from 'muya-core'
 import 'muya-core/src/muya/lib/assets/styles/index.css'
+
+const isTauri = typeof window !== 'undefined' && (!!window.__TAURI_IPC__ || !!window.__TAURI__)
+
+// Import Muya UI plugins
+import ImageSelector from 'muya-core/src/muya/lib/ui/imageSelector'
+import ImageToolbar from 'muya-core/src/muya/lib/ui/imageToolbar'
+import Transformer from 'muya-core/src/muya/lib/ui/transformer'
+import FormatPicker from 'muya-core/src/muya/lib/ui/formatPicker'
+import FrontMenu from 'muya-core/src/muya/lib/ui/frontMenu'
+import QuickInsert from 'muya-core/src/muya/lib/ui/quickInsert'
+import TablePicker from 'muya-core/src/muya/lib/ui/tablePicker'
+import EmojiPicker from 'muya-core/src/muya/lib/ui/emojiPicker'
+
+// Register plugins
+Muya.use(ImageSelector)
+Muya.use(ImageToolbar)
+Muya.use(Transformer)
+Muya.use(FormatPicker)
+Muya.use(FrontMenu)
+Muya.use(QuickInsert)
+Muya.use(TablePicker)
+Muya.use(EmojiPicker)
+
 import html2pdf from 'html2pdf.js'
 
 import { open, save } from '@tauri-apps/plugin-dialog'
@@ -212,16 +235,16 @@ const tauriAPI = {
   },
 
   // Menu Event Listeners
-  onMenuNew: (callback) => listen('menu-new', () => callback()),
-  onMenuOpen: (callback) => listen('menu-open', () => callback()),
-  onMenuOpenFolder: (callback) => listen('menu-open-folder', () => callback()),
-  onMenuSave: (callback) => listen('menu-save', () => callback()),
-  onMenuSaveAs: (callback) => listen('menu-save-as', () => callback()),
-  onMenuPdf: (callback) => listen('menu-pdf', () => callback()),
-  onMenuHtml: (callback) => listen('menu-html', () => callback()),
-  onMenuPreferences: (callback) => listen('menu-preferences', () => callback()),
-  onMenuToggleSidebar: (callback) => listen('menu-toggle-sidebar', () => callback()),
-  onFolderUpdate: (callback) => listen('folder-update', (event) => callback(event.payload))
+  onMenuNew: (callback) => isTauri ? listen('menu-new', () => callback()) : Promise.resolve(() => {}),
+  onMenuOpen: (callback) => isTauri ? listen('menu-open', () => callback()) : Promise.resolve(() => {}),
+  onMenuOpenFolder: (callback) => isTauri ? listen('menu-open-folder', () => callback()) : Promise.resolve(() => {}),
+  onMenuSave: (callback) => isTauri ? listen('menu-save', () => callback()) : Promise.resolve(() => {}),
+  onMenuSaveAs: (callback) => isTauri ? listen('menu-save-as', () => callback()) : Promise.resolve(() => {}),
+  onMenuPdf: (callback) => isTauri ? listen('menu-pdf', () => callback()) : Promise.resolve(() => {}),
+  onMenuHtml: (callback) => isTauri ? listen('menu-html', () => callback()) : Promise.resolve(() => {}),
+  onMenuPreferences: (callback) => isTauri ? listen('menu-preferences', () => callback()) : Promise.resolve(() => {}),
+  onMenuToggleSidebar: (callback) => isTauri ? listen('menu-toggle-sidebar', () => callback()) : Promise.resolve(() => {}),
+  onFolderUpdate: (callback) => isTauri ? listen('folder-update', (event) => callback(event.payload)) : Promise.resolve(() => {})
 }
 
 /**
@@ -276,29 +299,56 @@ async function buildTree(dirPath) {
 
 const container = document.querySelector('#editor')
 const muya = new Muya(container, {
-  markdown: '# Hello Wisteria\n\nThis is your new minimalist editor.'
+  markdown: '# Hello Wisteria\n\nThis is your new minimalist editor.',
+  imagePathPicker: async () => {
+    const result = await open({
+      filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }]
+    })
+    return result || ''
+  }
 })
 
 // Fix: Override Muya's image path correction to support Tauri asset protocol
 // and relative paths without breaking the global base href.
-const originalCorrectImageSrc = muya.contentState.correctImageSrc
 muya.contentState.correctImageSrc = (src) => {
-  if (src && !src.startsWith('http') && !src.startsWith('data:') && !src.startsWith('tauri-asset:')) {
-    if (activeFilePath) {
-      // If it's a relative path, resolve it against the active file
-      const dir = activeFilePath.substring(0, activeFilePath.lastIndexOf('/'))
-      // This is a bit of a hack since we don't have synchronous join here, 
-      // but for simple relative paths like ./assets/xxx it works.
-      const absolutePath = src.startsWith('./') 
-        ? dir + src.substring(1) 
-        : (src.startsWith('/') ? src : dir + '/' + src)
-      return convertFileSrc(absolutePath)
-    }
+  if (!src) return src
+
+  // If it's already a Tauri asset (Tauri v1 tauri-asset:, Tauri v2 asset:), web URL, or data URL, return as-is
+  if (src.startsWith('tauri-asset:') || src.startsWith('asset:') || src.startsWith('http:') || src.startsWith('https:') || src.startsWith('data:')) {
+    return src
   }
+
+  // If we are not running inside Tauri, return as-is (browsers cannot load local absolute paths anyway)
+  if (!isTauri) {
+    return src
+  }
+
+  // Strip file:// protocol if present to get the actual disk path
+  // (e.g., file:///Users/... -> /Users/...)
+  let cleanPath = src
+  if (src.startsWith('file://')) {
+    cleanPath = src.startsWith('file:///') && /file:\/\/\/[a-zA-Z]:/.test(src)
+      ? src.substring(8) // Windows absolute
+      : src.substring(7) // macOS/Linux absolute
+  }
+
+  // If it's an absolute path after cleaning, convert to tauri-asset protocol
+  const isAbsolute = cleanPath.startsWith('/') || /^[a-zA-Z]:[/\\]/.test(cleanPath)
+  if (isAbsolute) {
+    return convertFileSrc(cleanPath)
+  }
+
+  // If it's a relative path, resolve it against the currently active file
+  if (activeFilePath) {
+    const dir = activeFilePath.substring(0, activeFilePath.lastIndexOf('/'))
+    const absolutePath = cleanPath.startsWith('./') 
+      ? dir + cleanPath.substring(1) 
+      : dir + '/' + cleanPath
+    return convertFileSrc(absolutePath)
+  }
+
   return src
 }
-
-console.log('Muya initialized:', muya)
 
 // Sidebar workspace states
 let activeFolderPath = null
@@ -385,6 +435,15 @@ window.addEventListener('click', () => {
   menu.classList.remove('show')
 })
 
+function updateDirname(filePath) {
+  if (filePath) {
+    const dir = filePath.substring(0, filePath.lastIndexOf('/'))
+    window.DIRNAME = dir
+  } else {
+    window.DIRNAME = ''
+  }
+}
+
 // IPC Listeners (from Electron Menu)
 tauriAPI.onMenuNew(async () => {
   if (activeFilePath) {
@@ -395,6 +454,7 @@ tauriAPI.onMenuNew(async () => {
     }
   }
   activeFilePath = null
+  updateDirname(null)
   muya.markdown = '# New Document\n\n'
   muya.setMarkdown('# New Document\n\n')
   updateActiveFileHighlight()
@@ -411,6 +471,7 @@ tauriAPI.onMenuOpen(async () => {
   const result = await tauriAPI.openFile()
   if (result.success && result.path) {
     activeFilePath = result.path
+    updateDirname(activeFilePath)
     muya.markdown = result.content
     muya.setMarkdown(result.content)
     updateActiveFileHighlight()
@@ -437,6 +498,7 @@ tauriAPI.onMenuSave(async () => {
     const result = await tauriAPI.saveFile(muya.markdown)
     if (result.success && result.path) {
       activeFilePath = result.path
+      updateDirname(activeFilePath)
       updateActiveFileHighlight()
       showSaveIndicator('Saved', 1500)
     }
@@ -450,6 +512,7 @@ tauriAPI.onMenuSaveAs(async () => {
   const result = await tauriAPI.saveFileAs(muya.markdown)
   if (result.success && result.path) {
     activeFilePath = result.path
+    updateDirname(activeFilePath)
     updateActiveFileHighlight()
     showSaveIndicator('Saved', 1500)
   }
@@ -937,6 +1000,7 @@ window.addEventListener('keydown', (e) => {
 
 // Initialize configurations on load
 loadSettings()
+window.DIRNAME = '' // Polyfill for muya-core to avoid baseUrl warnings
 updateStatusBar(muya.getWordCount(muya.markdown))
 applyConfiguredTheme(currentSettings.theme)
 applyStyles()
@@ -995,6 +1059,7 @@ async function selectFile(filePath) {
   const result = await tauriAPI.openFileWithPath(filePath)
   if (result.success) {
     activeFilePath = filePath
+    updateDirname(filePath)
     muya.markdown = result.content
     muya.setMarkdown(result.content)
     updateActiveFileHighlight()
@@ -1540,7 +1605,7 @@ function showInlineInputForRename(targetPath, isDir) {
       }
       if (activeFilePath === targetPath) {
         activeFilePath = newPath
-        updateBaseHref(newPath)
+        updateDirname(newPath)
       }
     } else {
       alert(result.error || 'Failed to rename')

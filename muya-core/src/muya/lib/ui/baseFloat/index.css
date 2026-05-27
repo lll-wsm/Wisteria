@@ -22,6 +22,7 @@
 
 [data-popper-placement] {
   opacity: 1;
+  right: auto;
 }
 
 .ag-popper-arrow {

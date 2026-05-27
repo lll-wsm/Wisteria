@@ -302,7 +302,13 @@ const formatCtrl = (ContentState) => {
           requestAnimationFrame(() => {
             const startNode = selection.getSelectionStart()
             if (startNode) {
-              const imageWrapper = startNode.closest('.ag-inline-image')
+              // closest() looks up the ancestor chain, but the image wrapper
+              // is a descendant of the paragraph, not an ancestor.
+              // Fall back to querySelector when closest returns null.
+              let imageWrapper = startNode.closest('.ag-inline-image')
+              if (!imageWrapper) {
+                imageWrapper = startNode.querySelector('.ag-inline-image.ag-empty-image')
+              }
               if (imageWrapper && imageWrapper.classList.contains('ag-empty-image')) {
                 const imageInfo = getImageInfo(imageWrapper)
                 this.muya.eventCenter.dispatch('muya-image-selector', {

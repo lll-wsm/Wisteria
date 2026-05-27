@@ -19,7 +19,7 @@ export const getTextContent = (node, blackList) => {
   }
 
   // Handle inline image
-  if (node.nodeType === 1 && node.classList.contains('ag-inline-image')) {
+  if (node.nodeType === 1 && node.classList.contains('ag-inline-image') && !node.classList.contains('ag-empty-image')) {
     const raw = node.getAttribute('data-raw')
     const imageContainer = node.querySelector('.ag-image-container')
     const hasImg = imageContainer.querySelector('img')

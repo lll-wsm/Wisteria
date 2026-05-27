@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wisteria Editor</title>
+  <script>
+    // Polyfill global for muya-core and other libraries that expect a Node.js environment
+    window.global = window;
+    // Mock marktext environment to allow context menu events to bubble up
+    window.marktext = {
+      env: 'production'
+    };
+  </script>
   <link rel="stylesheet" href="./src/style.css">
 </head>
 <body>

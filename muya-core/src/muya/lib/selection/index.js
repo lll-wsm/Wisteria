@@ -138,7 +138,7 @@ class Selection {
           continue
         }
 
-        if (node.nodeType === 1 && node.classList.contains('ag-inline-image')) {
+        if (node.nodeType === 1 && node.classList.contains('ag-inline-image') && !node.classList.contains('ag-empty-image')) {
           const raw = node.getAttribute('data-raw')
           nextCharIndex = charIndex + raw.length
           if (
@@ -507,7 +507,7 @@ class Selection {
             ? count + textLength > offset
             : count + textLength >= offset
         ) {
-          if (child.classList && child.classList.contains('ag-inline-image')) {
+          if (child.classList && child.classList.contains('ag-inline-image') && !child.classList.contains('ag-empty-image')) {
             const imageContainer = child.querySelector('.ag-image-container')
             const hasImg = imageContainer.querySelector('img')
 

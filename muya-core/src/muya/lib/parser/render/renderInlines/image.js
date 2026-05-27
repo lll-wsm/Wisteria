@@ -151,7 +151,165 @@ export default function image(h, cursor, block, token, outerClass) {
       ]
       : [h(wrapperSelector, data, [...imageIcons, renderImageContainer()])]
   } else {
+    const className = this.getClassName(outerClass, block, token, cursor)
+    const { start, end } = token.range
+    const altStart = start + 2
+    const altEnd = altStart + token.alt.length + (token.backlash?.first?.length || 0)
+    const srcStart = altEnd + 2
+    const srcEnd = end - 1
+
+    const firstBracket = h('span.ag-image-inline-marker', { attrs: { contenteditable: 'false' } }, '![')
+    const middleBracket = h('span.ag-image-inline-marker', { attrs: { contenteditable: 'false' } }, '](')
+    const lastBracket = h('span.ag-image-inline-marker', { attrs: { contenteditable: 'false' } }, ')')
+
+    const altContent = altStart === altEnd
+      ? [h('span.ag-image-placeholder-alt', {
+          attrs: { 'data-placeholder': '输入名称', contenteditable: 'true' },
+          on: {
+            click: (event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              this.muya.contentState.cursor = {
+                start: { key: block.key, offset: altStart },
+                end: { key: block.key, offset: altStart }
+              }
+              this.muya.contentState.singleRender(block)
+            }
+          }
+        }, '')]
+      : this.highlight(h, block, altStart, altEnd, token)
+
+    const srcContent = srcStart === srcEnd
+      ? [h('span.ag-image-placeholder-src', {
+          attrs: { 'data-placeholder': '输入图片路径', contenteditable: 'true' },
+          on: {
+            click: (event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              this.muya.contentState.cursor = {
+                start: { key: block.key, offset: srcStart },
+                end: { key: block.key, offset: srcStart }
+              }
+              this.muya.contentState.singleRender(block)
+            }
+          }
+        }, '')]
+      : this.highlight(h, block, srcStart, srcEnd, token)
+
+    const handlePick = (newSrc) => {
+      this.muya.contentState.replaceImage({ key: block.key, token }, {
+        alt: token.attrs.alt || '',
+        src: newSrc,
+        title: token.attrs.title || ''
+      })
+    }
+
+    const isTauri = typeof window !== 'undefined' && (!!window.__TAURI_IPC__ || !!window.__TAURI__)
+    const inputId = `file-input-${block.key}-${token.range.start}`
+
+    const fileIcon = h('label.ag-image-file-icon', {
+      attrs: {
+        for: isTauri ? undefined : inputId,
+        contenteditable: 'false',
+        title: '选择本地图片'
+      },
+      style: {
+        cursor: 'pointer'
+      },
+      on: {
+        mousedown: async (event) => {
+          // Block browser default focus changes and stop propagation to prevent editor re-renders
+          event.preventDefault()
+          event.stopPropagation()
+          
+          alert('[Wisteria Debug] mousedown triggered! isTauri=' + isTauri + ', imagePathPicker=' + (this.muya.options ? typeof this.muya.options.imagePathPicker : 'no options'))
+
+          if (isTauri) {
+            if (this.muya.options.imagePathPicker) {
+              try {
+                const path = await this.muya.options.imagePathPicker()
+                alert('[Wisteria Debug] Tauri dialog returned: ' + path)
+                if (path) {
+                  handlePick(path)
+                }
+              } catch (err) {
+                alert('[Wisteria Debug] Tauri imagePathPicker error: ' + err.message)
+                console.warn('Tauri imagePathPicker failed:', err)
+              }
+            } else {
+              alert('[Wisteria Debug] imagePathPicker is not defined in options!')
+            }
+          } else {
+            // Programmatically trigger input.click() synchronously within the mousedown user gesture
+            const input = document.getElementById(inputId)
+            if (input) {
+              alert('[Wisteria Debug] Web fallback: clicking hidden input')
+              input.click()
+            } else {
+              alert('[Wisteria Debug] Web fallback error: input element not found!')
+            }
+          }
+        },
+        click: (event) => {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+      }
+    }, [
+      // SVG folder icon
+      h('svg', {
+        attrs: {
+          viewBox: '0 0 24 24',
+          width: '14',
+          height: '14',
+          fill: 'none',
+          stroke: 'currentColor',
+          'stroke-width': '2',
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round'
+        }
+      }, [
+        h('path', { attrs: { d: 'M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z' } })
+      ])
+    ])
+
+    const hiddenInput = h('input', {
+      attrs: {
+        type: 'file',
+        accept: 'image/*',
+        id: inputId,
+        style: 'display: none;',
+        contenteditable: 'false'
+      },
+      on: {
+        change: (e) => {
+          const file = e.target.files[0]
+          if (file) {
+            const url = URL.createObjectURL(file)
+            handlePick(url)
+          }
+        }
+      }
+    })
+
     wrapperSelector += `.${CLASS_OR_ID.AG_EMPTY_IMAGE}`
-    return [h(wrapperSelector, data, [...imageIcons, renderImageContainer()])]
+    
+    const data = {
+      dataset: {
+        raw: token.raw
+      }
+    }
+
+    return [
+      h(wrapperSelector, data, [
+        firstBracket,
+        ...altContent,
+        middleBracket,
+        ...srcContent,
+        fileIcon,
+        hiddenInput,
+        lastBracket
+      ])
+    ]
   }
 }
