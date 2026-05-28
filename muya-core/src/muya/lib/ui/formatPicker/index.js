@@ -28,6 +28,13 @@ class FormatPicker extends BaseFloat {
     const formatContainer = this.formatContainer = document.createElement('div')
     this.container.appendChild(formatContainer)
     this.floatBox.classList.add('ag-format-picker-container')
+    
+    // Prevent focus shifts/selection loss when clicking formatting options
+    this.muya.eventCenter.attachDOMEvent(this.floatBox, 'mousedown', event => {
+      event.preventDefault()
+      event.stopPropagation()
+    })
+
     this.listen()
   }
 

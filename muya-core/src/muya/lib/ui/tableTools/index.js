@@ -27,6 +27,10 @@ class TableBarTools extends BaseFloat {
     this.floatBox.classList.add('ag-table-bar-tools')
     const tableBarContainer = this.tableBarContainer = document.createElement('div')
     this.container.appendChild(tableBarContainer)
+    this.muya.eventCenter.attachDOMEvent(this.floatBox, 'mousedown', event => {
+      event.preventDefault()
+      event.stopPropagation()
+    })
     this.listen()
   }
 
@@ -81,7 +85,7 @@ class TableBarTools extends BaseFloat {
     event.stopPropagation()
 
     const { contentState } = this.muya
-    contentState.editTable(item)
+    contentState.editTable(item, this.tableInfo && this.tableInfo.cellContentKey)
     this.hide()
   }
 }

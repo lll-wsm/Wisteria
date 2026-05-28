@@ -270,7 +270,7 @@ pre.ag-multiple-math {
 
 /* Unified Selection and Active states using dynamic accent color */
 .ag-active {
-  background-color: color-mix(in srgb, var(--accent-color), transparent 90%) !important;
+  background-color: transparent !important;
   transition: background-color 0.4s ease;
 }
 
@@ -958,9 +958,11 @@ body.sidebar-open #ag-editor-id {
 /* Fix broken PNG icons (Squares issue) */
 .ag-format-picker li.item .icon-wrapper i.icon,
 .ag-front-menu li.item .icon-wrapper i.icon,
+.ag-image-toolbar li.item .icon-wrapper i.icon,
 .ag-image-icon-success i.icon,
 .ag-image-icon-fail i.icon,
-.ag-image-icon-close i.icon {
+.ag-image-icon-close i.icon,
+.ag-tool-bar ul li i.icon {
   width: 16px !important;
   height: 16px !important;
   display: flex !important;
@@ -970,7 +972,9 @@ body.sidebar-open #ag-editor-id {
 }
 
 .ag-format-picker li.item .icon-wrapper i.icon i.icon-inner,
-.ag-front-menu li.item .icon-wrapper i.icon i.icon-inner {
+.ag-front-menu li.item .icon-wrapper i.icon i.icon-inner,
+.ag-image-toolbar li.item .icon-wrapper i.icon i.icon-inner,
+.ag-tool-bar ul li i.icon > i[class^='icon-'] {
   display: block !important;
   width: 16px !important;
   height: 16px !important;
@@ -983,12 +987,137 @@ body.sidebar-open #ag-editor-id {
   transition: opacity 0.2s;
 }
 
+/* Table Toolbar - icon fixes */
+.ag-tool-bar ul li:hover i.icon > i[class^='icon-'] {
+  opacity: 1 !important;
+}
+
+.ag-tool-bar ul li.active i.icon > i[class^='icon-'] {
+  opacity: 1 !important;
+  filter: brightness(0) saturate(100%) invert(30%) sepia(98%) saturate(2000%) hue-rotate(240deg) !important;
+}
+
+/* Table Toolbar - background styling */
+.ag-tool-bar {
+  background: var(--editorBgColor) !important;
+  border-radius: 6px !important;
+  padding: 2px 4px !important;
+}
+
+/* Table Cell Basics (from muya-core themes/default.css, not loaded by default) */
+table tr th {
+  font-weight: bold;
+  padding: 6px 13px;
+  position: relative;
+}
+
+table tr td {
+  padding: 6px 13px;
+  position: relative;
+}
+
+/* Table Drag Handlers - row/column insert/remove triggers */
+table tr .ag-drag-handler.left {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 9px;
+  height: 19px;
+  border-radius: 4px;
+  border: 1px solid var(--editorColor50);
+  left: -11px;
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+table tr .ag-drag-handler.left::before,
+table tr .ag-drag-handler.left::after {
+  content: '';
+  display: block;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--editorColor50);
+  position: absolute;
+  left: 2px;
+  top: 4px;
+}
+
+table tr .ag-drag-handler.left::after {
+  top: 10px;
+}
+
+table tr .ag-drag-handler.bottom {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 19px;
+  height: 9px;
+  border-radius: 4px;
+  border: 1px solid var(--editorColor50);
+  bottom: -15px;
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+table tr .ag-drag-handler.bottom::before,
+table tr .ag-drag-handler.bottom::after {
+  content: '';
+  display: block;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--editorColor50);
+  position: absolute;
+  top: 2px;
+  left: 4px;
+}
+
+table tr .ag-drag-handler.bottom::after {
+  left: 10px;
+}
+
+table tr .ag-drag-handler.left,
+table tr .ag-drag-handler.bottom {
+  display: none;
+}
+
+table.ag-active tr .ag-drag-handler {
+  display: block;
+}
+
+table tr .ag-drag-handler:hover {
+  opacity: 1;
+}
+
 /* Specific styling for the Format Picker (the rectangle bubble) */
 .ag-format-picker {
   height: 36px !important; /* Slightly taller for modern feel */
+  width: max-content !important; /* Expand container width to fit all buttons */
   display: flex !important;
   align-items: center !important;
   padding: 0 8px !important;
+}
+
+/* Image Toolbar - wider to fit shrink/full buttons */
+.ag-image-toolbar {
+  width: auto !important;
+  min-width: max-content !important;
+}
+
+.ag-image-toolbar li.item {
+  border-radius: 6px !important;
+  margin: 0 2px !important;
+  transition: background-color 0.2s !important;
+}
+
+.ag-image-toolbar li.item:hover {
+  background-color: var(--editorColor10) !important;
+}
+
+.ag-image-toolbar li.item.active .icon-inner {
+  opacity: 1 !important;
+  filter: brightness(0) saturate(100%) invert(30%) sepia(98%) saturate(2000%) hue-rotate(240deg) !important;
 }
 
 .ag-format-picker li.item {
@@ -1052,7 +1181,52 @@ body.sidebar-open #ag-editor-id {
 #editor .ag-paragraph-content::selection,
 #editor .ag-atx-line::selection,
 #editor .ag-thematic-break-line::selection,
-#editor .ag-line-end::selection,
-#editor .ag-line-end *::selection {
+#editor .ag-inline-image:has(span:not(.ag-image-container):not(.ag-hide)) {
+  display: inline-flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  vertical-align: middle;
   background: transparent !important;
+  margin: 5px 0;
+  max-width: 100%;
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
+/* Force hide elements that have the ag-hide class inside the image wrapper */
+.ag-inline-image .ag-hide {
+  display: none !important;
+}
+
+/* Styled inline image source code blocks when editing (not hidden) */
+.ag-inline-image .ag-image-inline-marker,
+.ag-inline-image span:not(.ag-image-container):not(.ag-hide) {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.9em;
+  color: var(--accent-color);
+  opacity: 0.75;
+  background-color: var(--editorColor04);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.ag-inline-image .ag-image-container {
+  display: block;
+  margin-top: 6px;
+  max-width: 100%;
+  flex-basis: 100%;
+}
+
+.ag-inline-image .ag-image-container img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.3s;
+}
+
+.ag-inline-image.ag-inline-image-selected .ag-image-container img {
+  box-shadow: 0 4px 12px rgba(124, 77, 255, 0.25);
+  outline: 2px solid var(--accent-color);
 }

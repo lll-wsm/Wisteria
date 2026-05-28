@@ -30,6 +30,11 @@ class ImageToolbar extends BaseFloat {
     const toolbarContainer = (this.toolbarContainer = document.createElement('div'))
     this.container.appendChild(toolbarContainer)
     this.floatBox.classList.add('ag-image-toolbar-container')
+    // Prevent focus shifts/selection loss when clicking toolbar options
+    this.muya.eventCenter.attachDOMEvent(this.floatBox, 'mousedown', event => {
+      event.preventDefault()
+      event.stopPropagation()
+    })
     this.listen()
   }
 
@@ -37,6 +42,7 @@ class ImageToolbar extends BaseFloat {
     const { eventCenter } = this.muya
     super.listen()
     eventCenter.subscribe('muya-image-toolbar', ({ reference, imageInfo }) => {
+      console.log('[ImageToolbar] event received, reference:', !!reference, 'imageInfo:', imageInfo)
       this.reference = reference
       if (reference) {
         this.imageInfo = imageInfo
@@ -123,6 +129,7 @@ class ImageToolbar extends BaseFloat {
     event.stopPropagation()
 
     const { imageInfo } = this
+    console.log('[ImageToolbar] selectItem called:', item.type, 'imageInfo:', imageInfo)
     let isLocalImage = false
     if (this.isLocalFile(imageInfo)) {
       isLocalImage = true
@@ -161,6 +168,23 @@ class ImageToolbar extends BaseFloat {
       case 'center':
       case 'right': {
         this.muya.contentState.updateImage(this.imageInfo, 'data-align', item.type)
+        return this.hide()
+      }
+      case 'shrink': {
+        const { imageInfo } = this
+        const imgSelector = imageInfo.imageId.indexOf('_') > -1
+          ? `#${imageInfo.imageId} img`
+          : `#${imageInfo.key}_${imageInfo.imageId}_${imageInfo.token.range.start} img`
+        const image = document.querySelector(imgSelector)
+        if (image) {
+          const baseWidth = image.naturalWidth || image.offsetWidth || 400
+          const newWidth = Math.floor(baseWidth / 2)
+          this.muya.contentState.updateImage(imageInfo, 'width', newWidth)
+        }
+        return this.hide()
+      }
+      case 'full': {
+        this.muya.contentState.updateImage(this.imageInfo, 'width', null)
         return this.hide()
       }
       case 'open': {

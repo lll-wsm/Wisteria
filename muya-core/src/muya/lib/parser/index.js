@@ -40,7 +40,7 @@ const matchHtmlTag = (src, disableHtml) => {
 
   // Ignore HTML tag when HTML rendering is disabled and import it as plain text.
   // NB: We have to allow img tag to support image resizer and options.
-  if (disableHtml && (!match[3] || !/^img$/i.test(match[3]))) {
+  if (disableHtml && (!match[3] || !/^(?:img|u|sub|sup|mark)$/i.test(match[3]))) {
     return null
   }
   return match

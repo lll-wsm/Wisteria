@@ -110,10 +110,8 @@ const tableBlockCtrl = (ContentState) => {
     return this.firstInDescendant(table.children[1]) // first cell content in tbody
   }
 
-  ContentState.prototype.tableToolBarClick = function(type) {
-    const {
-      start: { key }
-    } = this.cursor
+  ContentState.prototype.tableToolBarClick = function(type, cellContentKey) {
+    const key = cellContentKey || (this.cursor && this.cursor.start && this.cursor.start.key)
     const block = this.getBlock(key)
     const parentBlock = this.getParent(block)
     if (block.functionType !== 'cellContent') {

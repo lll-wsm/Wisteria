@@ -21,8 +21,10 @@ class ClickEvent {
       }
 
       // Hide all float box and image transformer
+      // Keep transformer handles if right-clicking on an image (allow drag-resize)
+      const clickOnImage = event.target.closest(`.${CLASS_OR_ID.AG_INLINE_IMAGE}`)
       const { keyboard } = this.muya
-      if (keyboard) {
+      if (keyboard && !clickOnImage) {
         keyboard.hideAllFloatTools()
       }
 
@@ -78,8 +80,9 @@ class ClickEvent {
         const type = toolItem.getAttribute('data-label')
         const grandPa = toolItem.parentNode.parentNode
         if (grandPa.classList.contains('ag-tool-table')) {
-          contentState.tableToolBarClick(type)
+          contentState.tableToolBarClick(type, grandPa.dataset.cellKey)
         }
+        return
       }
       // Handle table drag bar click
       if (target.classList.contains('ag-drag-handler')) {
@@ -90,15 +93,17 @@ class ClickEvent {
           getBoundingClientRect() {
             return rect
           },
-          width: rect.offsetWidth,
-          height: rect.offsetHeight
+          width: rect.width,
+          height: rect.height
         }
         eventCenter.dispatch('muya-table-bar', {
           reference,
           tableInfo: {
-            barType: target.classList.contains('left') ? 'left' : 'bottom'
+            barType: target.classList.contains('left') ? 'left' : 'bottom',
+            cellContentKey: target.closest('th,td')?.querySelector('span[id]')?.id
           }
         })
+        return
       }
       // Handle image and inline math preview click
       const imageWrapper = target.closest(`.${CLASS_OR_ID.AG_INLINE_IMAGE}`)
@@ -134,7 +139,9 @@ class ClickEvent {
           if (isTauri && imagePathPicker) {
             imagePathPicker().then(path => {
               if (path) {
-                contentState.replaceImage(imageInfo, { alt: '', src: path, title: '' })
+                const match = /(?:\/|\\)?([^./\\]+)\.[a-z]+$/.exec(path)
+                const alt = match && match[1] ? match[1] : ''
+                contentState.replaceImage(imageInfo, { alt, src: path, title: '' })
                 eventCenter.dispatch('stateChange')
               }
             }).catch(() => {})
@@ -221,6 +228,12 @@ class ClickEvent {
           imageInfo
         })
         contentState.selectImage(imageInfo)
+        contentState.cursor = {
+          start: { key: imageInfo.key, offset: imageInfo.token.range.start + 2 },
+          end: { key: imageInfo.key, offset: imageInfo.token.range.start + 2 },
+          isEdit: true
+        }
+        contentState.singleRender(contentState.getBlock(imageInfo.key))
         // Handle show image transformer
         const imageSelector =
           imageInfo.imageId.indexOf('_') > -1
@@ -232,6 +245,18 @@ class ClickEvent {
         eventCenter.dispatch('muya-transformer', {
           reference: imageContainer,
           imageInfo
+        })
+        // Show image source editor (ImageSelector)
+        eventCenter.dispatch('muya-image-selector', {
+          reference: {
+            getBoundingClientRect() {
+              const r = imageWrapper.getBoundingClientRect()
+              r.height = 0
+              return r
+            }
+          },
+          imageInfo,
+          cb: () => {}
         })
         return
       }

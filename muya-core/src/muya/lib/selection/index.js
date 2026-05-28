@@ -535,6 +535,24 @@ class Selection {
                 offset: 0
               }
             } else {
+              // Cursor is inside the image markers — find the correct text node
+              const innerOffset = offset - count
+              let remaining = innerOffset
+              for (const grandchild of child.childNodes) {
+                // Skip non-editable elements (icons, image container)
+                if (grandchild.nodeType === 1 && grandchild.getAttribute) {
+                  if (grandchild.getAttribute('contenteditable') === 'false') continue
+                }
+                const childTextLen = getTextContent(grandchild, [
+                  CLASS_OR_ID.AG_MATH_RENDER,
+                  CLASS_OR_ID.AG_RUBY_RENDER
+                ]).length
+                if (childTextLen > 0 && remaining <= childTextLen) {
+                  return getNodeAndOffset(grandchild, remaining)
+                }
+                remaining -= childTextLen
+              }
+              // Fallback: position at start of editable content
               return {
                 node: child,
                 offset: 0

@@ -52,10 +52,16 @@ const renderToolBar = (type, tools, activeBlocks) => {
   })
   const selector = `div.ag-tool-${type}.${CLASS_OR_ID.AG_TOOL_BAR}`
 
+  const dataset = {}
+  if (type === 'table' && activeBlocks[0]) {
+    dataset.cellKey = activeBlocks[0].key
+  }
+
   return h(selector, {
     attrs: {
       contenteditable: false
-    }
+    },
+    dataset
   }, h('ul', children))
 }
 

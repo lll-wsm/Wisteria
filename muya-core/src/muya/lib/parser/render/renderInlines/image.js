@@ -122,45 +122,117 @@ export default function image(h, cursor, block, token, outerClass) {
       }
     }
 
+    const className = this.getClassName(outerClass, block, token, cursor)
     const renderImage = () => {
       const data = {
         props: { alt: alt.replace(/[`*{}[\]()#+\-.!_>~:|<>$]/g, ''), src: domsrc, title }
       }
 
-      if (typeof width === 'number') {
-        Object.assign(data.props, { width })
+      if (width != null) {
+        Object.assign(data.props, { width: Number(width) })
       }
 
-      if (typeof height === 'number') {
-        Object.assign(data.props, { height })
+      if (height != null) {
+        Object.assign(data.props, { height: Number(height) })
       }
 
       return h('img', data)
     }
 
-    return isSuccess
-      ? [
+    const imageContainer = isSuccess
+      ? renderImageContainer(renderImage())
+      : renderImageContainer()
+
+    if (token.type === 'html_tag') {
+      const tagContent = this.highlight(h, block, token.range.start, token.range.end, token)
+      return [
         h(wrapperSelector, data, [
+          h(`span.${className}`, tagContent),
           ...imageIcons,
-          renderImageContainer(
-              // An image description has inline elements as its contents.
-              // When an image is rendered to HTML, this is standardly used as the image’s alt attribute.
-            renderImage()
-          )
+          imageContainer
         ])
       ]
-      : [h(wrapperSelector, data, [...imageIcons, renderImageContainer()])]
-  } else {
-    const className = this.getClassName(outerClass, block, token, cursor)
+    }
+
     const { start, end } = token.range
     const altStart = start + 2
     const altEnd = altStart + token.alt.length + (token.backlash?.first?.length || 0)
     const srcStart = altEnd + 2
     const srcEnd = end - 1
 
-    const firstBracket = h('span.ag-image-inline-marker', { attrs: { contenteditable: 'false' } }, '![')
-    const middleBracket = h('span.ag-image-inline-marker', { attrs: { contenteditable: 'false' } }, '](')
-    const lastBracket = h('span.ag-image-inline-marker', { attrs: { contenteditable: 'false' } }, ')')
+    const firstBracket = h(`span.${className}.ag-image-inline-marker`, { attrs: { contenteditable: 'true' } }, '![')
+    const middleBracket = h(`span.${className}.ag-image-inline-marker`, { attrs: { contenteditable: 'true' } }, '](')
+    const lastBracket = h(`span.${className}.ag-image-inline-marker`, { attrs: { contenteditable: 'true' } }, ')')
+
+    const altContent = altStart === altEnd
+      ? [h(`span.${className}.ag-image-placeholder-alt`, {
+          attrs: { 'data-placeholder': '输入名称', contenteditable: 'true' },
+          on: {
+            click: (event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              this.muya.contentState.cursor = {
+                start: { key: block.key, offset: altStart },
+                end: { key: block.key, offset: altStart }
+              }
+              this.muya.contentState.singleRender(block)
+            }
+          }
+        }, '')]
+      : this.highlight(h, block, altStart, altEnd, token)
+
+    const srcContent = srcStart === srcEnd
+      ? [h(`span.${className}.ag-image-placeholder-src`, {
+          attrs: { 'data-placeholder': '输入图片路径', contenteditable: 'true' },
+          on: {
+            click: (event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              this.muya.contentState.cursor = {
+                start: { key: block.key, offset: srcStart },
+                end: { key: block.key, offset: srcStart }
+              }
+              this.muya.contentState.singleRender(block)
+            }
+          }
+        }, '')]
+      : this.highlight(h, block, srcStart, srcEnd, token)
+
+    const altSpan = h(`span.${className}`, altContent)
+    const srcSpan = h(`span.${className}`, srcContent)
+
+    return [
+      h(wrapperSelector, data, [
+        firstBracket,
+        altSpan,
+        middleBracket,
+        srcSpan,
+        lastBracket,
+        ...imageIcons,
+        imageContainer
+      ])
+    ]
+  } else {
+    const className = this.getClassName(outerClass, block, token, cursor)
+    const { start, end } = token.range
+
+    if (token.type === 'html_tag') {
+      const tagContent = this.highlight(h, block, start, end, token)
+      return [
+        h(wrapperSelector, data, [
+          h(`span.${className}`, tagContent)
+        ])
+      ]
+    }
+
+    const altStart = start + 2
+    const altEnd = altStart + token.alt.length + (token.backlash?.first?.length || 0)
+    const srcStart = altEnd + 2
+    const srcEnd = end - 1
+
+    const firstBracket = h('span.ag-image-inline-marker', { attrs: { contenteditable: 'true' } }, '![')
+    const middleBracket = h('span.ag-image-inline-marker', { attrs: { contenteditable: 'true' } }, '](')
+    const lastBracket = h('span.ag-image-inline-marker', { attrs: { contenteditable: 'true' } }, ')')
 
     const altContent = altStart === altEnd
       ? [h('span.ag-image-placeholder-alt', {
@@ -197,8 +269,10 @@ export default function image(h, cursor, block, token, outerClass) {
       : this.highlight(h, block, srcStart, srcEnd, token)
 
     const handlePick = (newSrc) => {
+      const match = /(?:\/|\\)?([^./\\]+)\.[a-z]+$/.exec(newSrc)
+      const alt = token.attrs.alt || (match && match[1] ? match[1] : '')
       this.muya.contentState.replaceImage({ key: block.key, token }, {
-        alt: token.attrs.alt || '',
+        alt,
         src: newSrc,
         title: token.attrs.title || ''
       })

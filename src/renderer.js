@@ -11,6 +11,7 @@ import FormatPicker from 'muya-core/src/muya/lib/ui/formatPicker'
 import FrontMenu from 'muya-core/src/muya/lib/ui/frontMenu'
 import QuickInsert from 'muya-core/src/muya/lib/ui/quickInsert'
 import TablePicker from 'muya-core/src/muya/lib/ui/tablePicker'
+import TableBarTools from 'muya-core/src/muya/lib/ui/tableTools'
 import EmojiPicker from 'muya-core/src/muya/lib/ui/emojiPicker'
 
 // Register plugins
@@ -21,6 +22,7 @@ Muya.use(FormatPicker)
 Muya.use(FrontMenu)
 Muya.use(QuickInsert)
 Muya.use(TablePicker)
+Muya.use(TableBarTools)
 Muya.use(EmojiPicker)
 
 import html2pdf from 'html2pdf.js'
@@ -101,7 +103,8 @@ const tauriAPI = {
   // Folder & Sidebar Ops
   openFolder: async () => {
     const selected = await open({
-      directory: true
+      directory: true,
+      recursive: true
     })
     if (!selected) return { success: false }
     try {
@@ -181,7 +184,8 @@ const tauriAPI = {
   },
   selectImageFolder: async () => {
     const selected = await open({
-      directory: true
+      directory: true,
+      recursive: true
     })
     if (!selected) return { success: false }
     return { success: true, path: selected }
@@ -410,29 +414,98 @@ container.addEventListener('keydown', (e) => {
 
 // Floating Menu Logic
 const menu = document.querySelector('#floating-menu')
+const imgMenu = document.querySelector('#image-context-menu')
+let currentImgElement = null
+let currentImageInfo = null
 
+function showContextMenu(e) {
+  const imageContainer = e.target.closest('.ag-image-container')
+  const imageWrapper = e.target.closest('.ag-inline-image')
+
+  if (imageContainer && imageWrapper) {
+    e.preventDefault()
+    e.stopPropagation()
+
+    // Hide other context menus
+    menu.classList.remove('show')
+    const sidebarMenu = document.querySelector('#sidebar-context-menu')
+    if (sidebarMenu) sidebarMenu.classList.remove('show')
+
+    // Store references
+    currentImgElement = imageContainer.querySelector('img')
+    currentImageInfo = muya.contentState.getImageInfo(imageWrapper)
+
+    const menuWidth = 150
+    const menuHeight = 220
+    let x = e.clientX
+    let y = e.clientY
+
+    if (x + menuWidth > window.innerWidth) x -= menuWidth
+    if (y + menuHeight > window.innerHeight) y -= menuHeight
+
+    imgMenu.style.left = `${x}px`
+    imgMenu.style.top = `${y}px`
+    imgMenu.classList.add('show')
+  } else {
+    imgMenu.classList.remove('show')
+
+    // Only show custom menu if we're not right-clicking an image or specific UI element
+    if (e.target.closest('.ag-image-container')) return
+
+    e.preventDefault()
+
+    // Basic collision detection with window edges
+    const menuWidth = 180
+    const menuHeight = 280 // Approximate
+    let x = e.clientX
+    let y = e.clientY
+
+    if (x + menuWidth > window.innerWidth) x -= menuWidth
+    if (y + menuHeight > window.innerHeight) y -= menuHeight
+
+    menu.style.left = `${x}px`
+    menu.style.top = `${y}px`
+    menu.classList.add('show')
+  }
+}
+
+// Listen for contextmenu events dispatched by Muya's eventCenter (editor-internal right-clicks).
+// Muya's clickEvent.js stops DOM propagation, so we must use the eventCenter instead.
+muya.eventCenter.subscribe('contextmenu', (e) => {
+  showContextMenu(e)
+})
+
+// Also listen on window for right-clicks outside the editor area (sidebar, etc.)
 window.addEventListener('contextmenu', (e) => {
-  // Only show custom menu if we're not right-clicking an image or specific UI element
-  if (e.target.closest('.ag-image-container')) return 
-
-  e.preventDefault()
-
-  // Basic collision detection with window edges
-  const menuWidth = 180
-  const menuHeight = 280 // Approximate
-  let x = e.clientX
-  let y = e.clientY
-
-  if (x + menuWidth > window.innerWidth) x -= menuWidth
-  if (y + menuHeight > window.innerHeight) y -= menuHeight
-
-  menu.style.left = `${x}px`
-  menu.style.top = `${y}px`
-  menu.classList.add('show')
+  // Skip if this is inside the Muya editor (handled by eventCenter subscription above)
+  if (e.target.closest('#editor')) return
+  showContextMenu(e)
 })
 
 window.addEventListener('click', () => {
   menu.classList.remove('show')
+  imgMenu.classList.remove('show')
+})
+
+// Zoom handlers
+const handleZoom = (scale) => {
+  if (!currentImgElement || !currentImageInfo) return
+  const naturalWidth = currentImgElement.naturalWidth
+  const baseWidth = naturalWidth || currentImgElement.clientWidth || 400
+  const newWidth = Math.round(baseWidth * scale)
+  muya.contentState.updateImage(currentImageInfo, 'width', newWidth)
+}
+
+document.querySelector('#img-zoom-25').addEventListener('click', () => handleZoom(0.25))
+document.querySelector('#img-zoom-50').addEventListener('click', () => handleZoom(0.50))
+document.querySelector('#img-zoom-75').addEventListener('click', () => handleZoom(0.75))
+document.querySelector('#img-zoom-100').addEventListener('click', () => handleZoom(1.00))
+
+// Delete handler
+document.querySelector('#img-delete').addEventListener('click', () => {
+  if (currentImageInfo) {
+    muya.contentState.deleteImage(currentImageInfo)
+  }
 })
 
 function updateDirname(filePath) {
@@ -447,10 +520,11 @@ function updateDirname(filePath) {
 // IPC Listeners (from Electron Menu)
 tauriAPI.onMenuNew(async () => {
   if (activeFilePath) {
-    try {
-      await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
-    } catch (e) {
-      console.error(e)
+    const result = await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
+    if (!result.success) {
+      console.error('Save failed:', result.error)
+      alert(`Failed to save current file: ${result.error}`)
+      return
     }
   }
   activeFilePath = null
@@ -462,10 +536,11 @@ tauriAPI.onMenuNew(async () => {
 
 tauriAPI.onMenuOpen(async () => {
   if (activeFilePath) {
-    try {
-      await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
-    } catch (e) {
-      console.error(e)
+    const result = await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
+    if (!result.success) {
+      console.error('Save failed:', result.error)
+      alert(`Failed to save current file: ${result.error}`)
+      return
     }
   }
   const result = await tauriAPI.openFile()
@@ -488,11 +563,12 @@ tauriAPI.onMenuSave(async () => {
   }
   if (activeFilePath) {
     showSaveIndicator('Saving...')
-    try {
-      await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
+    const result = await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
+    if (result.success) {
       showSaveIndicator('Saved', 1500)
-    } catch (err) {
-      showSaveIndicator('Save failed', 2000, true)
+    } else {
+      console.error('Save failed:', result.error)
+      showSaveIndicator(`Save failed: ${result.error}`, 3000, true)
     }
   } else {
     const result = await tauriAPI.saveFile(muya.markdown)
@@ -501,6 +577,9 @@ tauriAPI.onMenuSave(async () => {
       updateDirname(activeFilePath)
       updateActiveFileHighlight()
       showSaveIndicator('Saved', 1500)
+    } else if (!result.success && result.error) {
+      console.error('Save failed:', result.error)
+      showSaveIndicator(`Save failed: ${result.error}`, 3000, true)
     }
   }
 })
@@ -515,6 +594,9 @@ tauriAPI.onMenuSaveAs(async () => {
     updateDirname(activeFilePath)
     updateActiveFileHighlight()
     showSaveIndicator('Saved', 1500)
+  } else if (!result.success && result.error) {
+    console.error('Save As failed:', result.error)
+    showSaveIndicator(`Save failed: ${result.error}`, 3000, true)
   }
 })
 
@@ -622,12 +704,17 @@ document.querySelector('#floating-menu').addEventListener('click', async (e) => 
       break
     case 'menu-save':
       if (activeFilePath) {
-        await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
+        const result = await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
+        if (!result.success) {
+          alert(`Save failed: ${result.error}`)
+        }
       } else {
         const result = await tauriAPI.saveFile(muya.markdown)
         if (result.success && result.path) {
           activeFilePath = result.path
           updateActiveFileHighlight()
+        } else if (!result.success && result.error) {
+          alert(`Save failed: ${result.error}`)
         }
       }
       break
@@ -759,15 +846,14 @@ function debounceAutoSave() {
   autoSaveTimer = setTimeout(async () => {
     isSaving = true
     showSaveIndicator('Saving...')
-    try {
-      await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
+    const result = await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
+    if (result.success) {
       showSaveIndicator('Saved', 1500)
-    } catch (err) {
-      console.error('Auto-save failed:', err)
+    } else {
+      console.error('Auto-save failed:', result.error)
       showSaveIndicator('Save failed', 2000, true)
-    } finally {
-      isSaving = false
     }
+    isSaving = false
   }, delay)
 }
 
@@ -1049,10 +1135,12 @@ async function selectFile(filePath) {
   }
 
   if (activeFilePath) {
-    try {
-      await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
-    } catch (err) {
-      console.error('Auto-save failed:', err)
+    const result = await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
+    if (!result.success) {
+      console.error('Auto-save failed before switching file:', result.error)
+      if (!confirm(`Failed to save changes to current file: ${result.error}\nDo you want to switch files anyway? (Unsaved changes will be lost)`)) {
+        return
+      }
     }
   }
 
@@ -1083,10 +1171,12 @@ function updateActiveFileHighlight() {
 // Open Folder action
 async function handleOpenFolder() {
   if (activeFilePath) {
-    try {
-      await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
-    } catch (e) {
-      console.error(e)
+    const result = await tauriAPI.saveFileWithPath(activeFilePath, muya.markdown)
+    if (!result.success) {
+      console.error('Save before open folder failed:', result.error)
+      if (!confirm(`Failed to save changes to current file: ${result.error}\nDo you want to open another folder anyway?`)) {
+        return
+      }
     }
   }
 

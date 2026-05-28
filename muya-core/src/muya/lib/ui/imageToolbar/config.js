@@ -13,6 +13,8 @@ export const getIcons = (translateFn) => {
     { type: 'left', tooltip: t('editor.image.toolbar.alignLeft'), icon: leftIcon },
     { type: 'center', tooltip: t('editor.image.toolbar.alignCenter'), icon: middleIcon },
     { type: 'right', tooltip: t('editor.image.toolbar.alignRight'), icon: rightIcon },
+    { type: 'shrink', tooltip: '缩小 (50%)', icon: inlineIcon },
+    { type: 'full', tooltip: '原始大小 (100%)', icon: editIcon },
     { type: 'delete', tooltip: t('editor.image.toolbar.delete'), icon: deleteIcon }
   ]
 }

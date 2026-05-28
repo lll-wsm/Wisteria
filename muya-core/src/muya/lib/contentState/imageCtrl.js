@@ -1,5 +1,5 @@
 import { URL_REG, DATA_URL_REG } from '../config'
-import { correctImageSrc } from '../utils/getImageInfo'
+import { correctImageSrc, getImageInfo } from '../utils/getImageInfo'
 import { fileURLToPath } from 'url'
 
 const imageCtrl = (ContentState) => {
@@ -109,12 +109,17 @@ const imageCtrl = (ContentState) => {
     const oldText = block.text
     let imageText = ''
     const attrs = Object.assign({}, token.attrs)
-    attrs[attrName] = attrValue
+    if (attrValue === null || attrValue === undefined) {
+      delete attrs[attrName]
+    } else {
+      attrs[attrName] = attrValue
+    }
 
     imageText = '<img '
     for (const attr of Object.keys(attrs)) {
       let value = attrs[attr]
-      if (value && attr === 'src') {
+      if (value === null || value === undefined) continue
+      if (attr === 'src') {
         value = correctImageSrc(value)
       }
       imageText += `${attr}="${value}" `
@@ -142,9 +147,17 @@ const imageCtrl = (ContentState) => {
     const oldText = block.text
     let imageText = ''
     if (type === 'image') {
+      // Auto-fill alt from filename if alt is empty (consistent with insertImage)
+      let imageAlt = alt
+      if (!imageAlt && src) {
+        const match = /(?:\/|\\)?([^./\\]+)\.[a-z]+$/.exec(src)
+        if (match && match[1]) {
+          imageAlt = match[1]
+        }
+      }
       imageText = '!['
-      if (alt) {
-        imageText += alt
+      if (imageAlt) {
+        imageText += imageAlt
       }
       imageText += ']('
       if (src) {
@@ -160,7 +173,8 @@ const imageCtrl = (ContentState) => {
       imageText = '<img '
       for (const attr of Object.keys(attrs)) {
         let value = attrs[attr]
-        if (value && attr === 'src') {
+        if (value === null || value === undefined) continue
+        if (attr === 'src') {
           value = correctImageSrc(value)
         }
         imageText += `${attr}="${value}" `
@@ -183,6 +197,7 @@ const imageCtrl = (ContentState) => {
     const { eventCenter } = this.muya
     block.text = oldText.substring(0, start) + oldText.substring(end)
 
+    this.selectedImage = null
     this.cursor = {
       start: { key, offset: start },
       end: { key, offset: start },
@@ -227,6 +242,10 @@ const imageCtrl = (ContentState) => {
       eventCenter.dispatch('muya-image-toolbar', { reference: null })
       this.muya.dispatchChange()
     }
+  }
+
+  ContentState.prototype.getImageInfo = function(image) {
+    return getImageInfo(image)
   }
 }
 

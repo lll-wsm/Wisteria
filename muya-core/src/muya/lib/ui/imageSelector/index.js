@@ -43,10 +43,14 @@ class ImageSelector extends BaseFloat {
     const { eventCenter } = this.muya
     eventCenter.subscribe('muya-image-selector', ({ reference, cb, imageInfo }) => {
       if (reference) {
-        // Unselected image.
         const { contentState } = this.muya
+        // Only unselect if editing a different image than currently selected
         if (contentState.selectedImage) {
-          contentState.selectedImage = null
+          const selected = contentState.selectedImage
+          if (selected.key !== imageInfo.key ||
+              selected.token.range.start !== imageInfo.token.range.start) {
+            contentState.selectedImage = null
+          }
         }
 
         Object.assign(this.state, imageInfo.token.attrs)
@@ -398,7 +402,7 @@ class ImageSelector extends BaseFloat {
 
   render() {
     const { oldVnode, imageSelectorContainer } = this
-    const selector = 'div'
+    const selector = 'div.ag-image-selector'
     const vnode = h(selector, [this.renderHeader(), this.renderBody()])
     if (oldVnode) {
       patch(oldVnode, vnode)
