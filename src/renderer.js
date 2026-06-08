@@ -279,6 +279,9 @@ function updateStatusBar(wordCount) {
 
 muya.on('change', (payload) => {
   updateStatusBar(payload.wordCount)
+  if (typeof findReplacePanel !== 'undefined' && findReplacePanel && !findReplacePanel.classList.contains('hidden')) {
+    performSearch(true)
+  }
 })
 
 // Theme Initialization
@@ -303,6 +306,345 @@ function initTheme() {
 // Initial update
 updateStatusBar(muya.getWordCount(muya.markdown))
 initTheme()
+
+// ==========================================
+// Find & Replace Logic (VS Code Style)
+// ==========================================
+
+const findReplacePanel = document.querySelector('#find-replace-panel')
+const findInput = document.querySelector('#find-input')
+const replaceInput = document.querySelector('#replace-input')
+const replaceRow = findReplacePanel.querySelector('.replace-row')
+const findToggleReplace = document.querySelector('#find-toggle-replace')
+const findCount = document.querySelector('#find-count')
+const caseSensitiveBtn = document.querySelector('#find-case-sensitive')
+const wholeWordBtn = document.querySelector('#find-whole-word')
+const regexBtn = document.querySelector('#find-regex')
+const findPrevBtn = document.querySelector('#find-prev')
+const findNextBtn = document.querySelector('#find-next')
+const findCloseBtn = document.querySelector('#find-close')
+const replaceOneBtn = document.querySelector('#replace-one')
+const replaceAllBtn = document.querySelector('#replace-all')
+
+let currentMatches = []
+let currentMatchIndex = -1
+
+// Perform Find Search
+function performSearch(keepIndex = false) {
+  const query = findInput.value
+  if (!query) {
+    // Clear search
+    muya.search('', {
+      isCaseSensitive: false,
+      isWholeWord: false,
+      isRegexp: false
+    })
+    findCount.innerText = 'No results'
+    findCount.classList.remove('has-results')
+    currentMatches = []
+    currentMatchIndex = -1
+    return
+  }
+
+  const isCaseSensitive = caseSensitiveBtn.classList.contains('active')
+  const isWholeWord = wholeWordBtn.classList.contains('active')
+  const isRegexp = regexBtn.classList.contains('active')
+
+  // Prevent browser crash / error with invalid regexp
+  if (isRegexp) {
+    try {
+      new RegExp(query)
+      findInput.parentElement.classList.remove('invalid-regex')
+    } catch (e) {
+      findInput.parentElement.classList.add('invalid-regex')
+      findCount.innerText = 'Invalid RegExp'
+      findCount.classList.add('has-results')
+      return
+    }
+  } else {
+    findInput.parentElement.classList.remove('invalid-regex')
+  }
+
+  const opt = {
+    isCaseSensitive,
+    isWholeWord,
+    isRegexp
+  }
+
+  if (keepIndex && currentMatchIndex >= 0) {
+    opt.highlightIndex = currentMatchIndex
+  }
+
+  const result = muya.search(query, opt)
+  currentMatches = result.matches || []
+  currentMatchIndex = result.index
+
+  updateCountDisplay()
+}
+
+// Update matches count display
+function updateCountDisplay() {
+  if (currentMatches.length === 0) {
+    findCount.innerText = 'No results'
+    findCount.classList.remove('has-results')
+  } else {
+    findCount.innerText = `${currentMatchIndex + 1} of ${currentMatches.length}`
+    findCount.classList.add('has-results')
+  }
+}
+
+// Scroll active match to viewport center/view
+function scrollActiveMatchIntoView() {
+  requestAnimationFrame(() => {
+    const activeHighlight = document.querySelector('.ag-highlight')
+    if (activeHighlight) {
+      activeHighlight.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  })
+}
+
+// Navigate to Next Match
+function findNext() {
+  if (currentMatches.length === 0) return
+  const result = muya.find('next')
+  currentMatches = result.matches || []
+  currentMatchIndex = result.index
+  updateCountDisplay()
+  scrollActiveMatchIntoView()
+}
+
+// Navigate to Previous Match
+function findPrev() {
+  if (currentMatches.length === 0) return
+  const result = muya.find('prev')
+  currentMatches = result.matches || []
+  currentMatchIndex = result.index
+  updateCountDisplay()
+  scrollActiveMatchIntoView()
+}
+
+// Replace Current Match
+function replaceOne() {
+  if (currentMatches.length === 0 || currentMatchIndex < 0) return
+  const replaceValue = replaceInput.value
+  const isCaseSensitive = caseSensitiveBtn.classList.contains('active')
+  const isWholeWord = wholeWordBtn.classList.contains('active')
+  const isRegexp = regexBtn.classList.contains('active')
+
+  const result = muya.replace(replaceValue, {
+    isSingle: true,
+    isRegexp,
+    isCaseSensitive,
+    isWholeWord
+  })
+  muya.dispatchChange()
+
+  currentMatches = result.matches || []
+  currentMatchIndex = result.index
+  updateCountDisplay()
+  scrollActiveMatchIntoView()
+}
+
+// Replace All Matches
+function replaceAll() {
+  if (currentMatches.length === 0) return
+  const replaceValue = replaceInput.value
+  const isCaseSensitive = caseSensitiveBtn.classList.contains('active')
+  const isWholeWord = wholeWordBtn.classList.contains('active')
+  const isRegexp = regexBtn.classList.contains('active')
+
+  const result = muya.replace(replaceValue, {
+    isSingle: false,
+    isRegexp,
+    isCaseSensitive,
+    isWholeWord
+  })
+  muya.dispatchChange()
+
+  currentMatches = result.matches || []
+  currentMatchIndex = result.index
+  updateCountDisplay()
+  scrollActiveMatchIntoView()
+}
+
+// Show/Toggle Panel
+function showPanel(showReplace = false) {
+  findReplacePanel.classList.remove('hidden')
+  if (showReplace) {
+    replaceRow.classList.remove('hidden')
+    findToggleReplace.classList.add('expanded')
+  } else {
+    replaceRow.classList.add('hidden')
+    findToggleReplace.classList.remove('expanded')
+  }
+
+  // Pre-fill find input with text selection if single line
+  const selectedText = window.getSelection().toString()
+  if (selectedText && !selectedText.includes('\n')) {
+    findInput.value = selectedText
+  }
+
+  performSearch()
+
+  // Focus
+  if (showReplace && findInput.value) {
+    replaceInput.focus()
+    replaceInput.select()
+  } else {
+    findInput.focus()
+    findInput.select()
+  }
+}
+
+// Hide Panel
+function hidePanel() {
+  findReplacePanel.classList.add('hidden')
+  muya.search('', {
+    isCaseSensitive: false,
+    isWholeWord: false,
+    isRegexp: false
+  })
+  currentMatches = []
+  currentMatchIndex = -1
+  if (muya && typeof muya.focus === 'function') {
+    muya.focus()
+  }
+}
+
+// Event Listeners for inputs
+findInput.addEventListener('input', () => {
+  performSearch()
+})
+
+findInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    if (e.shiftKey) {
+      findPrev()
+    } else {
+      findNext()
+    }
+  }
+})
+
+replaceInput.addEventListener('keydown', (e) => {
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const isCmdOrCtrl = isMac ? e.metaKey : e.ctrlKey
+  
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    if (e.altKey && isCmdOrCtrl) {
+      replaceAll()
+    } else {
+      replaceOne()
+    }
+  }
+})
+
+// Action Buttons
+findToggleReplace.addEventListener('click', () => {
+  const isHidden = replaceRow.classList.contains('hidden')
+  if (isHidden) {
+    replaceRow.classList.remove('hidden')
+    findToggleReplace.classList.add('expanded')
+    replaceInput.focus()
+  } else {
+    replaceRow.classList.add('hidden')
+    findToggleReplace.classList.remove('expanded')
+    findInput.focus()
+  }
+})
+
+caseSensitiveBtn.addEventListener('click', () => {
+  caseSensitiveBtn.classList.toggle('active')
+  performSearch()
+})
+
+wholeWordBtn.addEventListener('click', () => {
+  wholeWordBtn.classList.toggle('active')
+  performSearch()
+})
+
+regexBtn.addEventListener('click', () => {
+  regexBtn.classList.toggle('active')
+  performSearch()
+})
+
+findPrevBtn.addEventListener('click', () => {
+  findPrev()
+})
+
+findNextBtn.addEventListener('click', () => {
+  findNext()
+})
+
+findCloseBtn.addEventListener('click', () => {
+  hidePanel()
+})
+
+replaceOneBtn.addEventListener('click', () => {
+  replaceOne()
+})
+
+replaceAllBtn.addEventListener('click', () => {
+  replaceAll()
+})
+
+// Global keyboard shortcuts listener
+window.addEventListener('keydown', (e) => {
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const isCmdOrCtrl = isMac ? e.metaKey : e.ctrlKey
+  const key = e.key.toLowerCase()
+
+  // Cmd+F or Ctrl+F
+  if (isCmdOrCtrl && key === 'f') {
+    e.preventDefault()
+    showPanel(false)
+  }
+  // Cmd+Alt+F (macOS Replace) or Ctrl+H (Windows/Linux Replace)
+  else if ((isMac && isCmdOrCtrl && e.altKey && key === 'f') || (!isMac && isCmdOrCtrl && key === 'h')) {
+    e.preventDefault()
+    showPanel(true)
+  }
+  // Let's also support Cmd+H on macOS specifically if we can intercept it (though OS usually intercepts, it's nice fallback)
+  else if (isMac && isCmdOrCtrl && key === 'h') {
+    e.preventDefault()
+    showPanel(true)
+  }
+  // Escape
+  else if (e.key === 'Escape') {
+    if (!findReplacePanel.classList.contains('hidden')) {
+      e.preventDefault()
+      hidePanel()
+    }
+  }
+})
+
+// IPC listeners from main menu
+if (window.electronAPI) {
+  window.electronAPI.onMenuFind(() => {
+    showPanel(false)
+  })
+  window.electronAPI.onMenuReplace(() => {
+    showPanel(true)
+  })
+}
+
+// Stop key events inside input from triggering global editor shortcuts or bubbling undesirably
+const stopPropagation = (e) => {
+  if (e.key !== 'Escape') { // Let Escape bubble so it can close panel
+    e.stopPropagation()
+  }
+}
+findInput.addEventListener('keydown', stopPropagation)
+replaceInput.addEventListener('keydown', stopPropagation)
+
+// Prevent focus loss when clicking buttons on panel
+findReplacePanel.addEventListener('mousedown', (e) => {
+  if (e.target.tagName !== 'INPUT') {
+    e.preventDefault()
+  }
+})
 
 // ==========================================
 // Sidebar & Workspace Controller Logic

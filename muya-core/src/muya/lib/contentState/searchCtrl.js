@@ -14,6 +14,9 @@ const matchString = (text, value, options) => {
     flag += 'i'
   }
 
+  // Add unicode flag to correctly support CJK, emojis, and unicode regex properties
+  flag += 'u'
+
   if (!isRegexp) {
     regStr = value.replace(SPECIAL_CHAR_REG, (p) => {
       return p === '\\' ? '\\\\' : `\\${p}`
@@ -21,7 +24,8 @@ const matchString = (text, value, options) => {
   }
 
   if (isWholeWord) {
-    regStr = `\\b${regStr}\\b`
+    // Unicode-aware word boundary (?<![\p{L}\p{N}_]) and (?![\p{L}\p{N}_]) to support both English and non-English text boundaries
+    regStr = `(?<![\\p{L}\\p{N}_])${regStr}(?![\\p{L}\\p{N}_])`
   }
 
   try {

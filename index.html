@@ -26,6 +26,46 @@
 
     <!-- Main Content Area -->
     <div id="main-content">
+      <!-- Find and Replace Panel -->
+      <div id="find-replace-panel" class="hidden">
+        <div class="find-row">
+          <button id="find-toggle-replace" class="panel-btn" title="Toggle Replace (Alt+Down)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="input-wrapper">
+            <input type="text" id="find-input" placeholder="Find" autocomplete="off">
+            <div class="input-actions">
+              <button id="find-case-sensitive" class="toggle-btn" title="Match Case (Alt+C)">Aa</button>
+              <button id="find-whole-word" class="toggle-btn" title="Match Whole Word (Alt+W)">Ab</button>
+              <button id="find-regex" class="toggle-btn" title="Use Regular Expression (Alt+R)">.*</button>
+            </div>
+          </div>
+          <span id="find-count">No results</span>
+          <button id="find-prev" class="panel-btn" title="Previous Match (Shift+Enter)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+          </button>
+          <button id="find-next" class="panel-btn" title="Next Match (Enter)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <button id="find-close" class="panel-btn" title="Close (Escape)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div class="replace-row hidden">
+          <div class="spacer"></div>
+          <div class="input-wrapper">
+            <input type="text" id="replace-input" placeholder="Replace" autocomplete="off">
+          </div>
+          <div class="replace-actions">
+            <button id="replace-one" class="panel-btn" title="Replace (Enter)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1-2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+            </button>
+            <button id="replace-all" class="panel-btn" title="Replace All (Cmd+Alt+Enter)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1-2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line></svg>
+            </button>
+          </div>
+        </div>
+      </div>
       <div id="editor" class="muya-container"></div>
     </div>
   </div>

@@ -34,5 +34,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onMenuSaveAs: (callback) => ipcRenderer.on('menu-save-as', () => callback()),
   onMenuPdf: (callback) => ipcRenderer.on('menu-pdf', () => callback()),
   onMenuHtml: (callback) => ipcRenderer.on('menu-html', () => callback()),
+  onMenuFind: (callback) => ipcRenderer.on('menu-find', () => callback()),
+  onMenuReplace: (callback) => ipcRenderer.on('menu-replace', () => callback()),
   onFolderUpdate: (callback) => ipcRenderer.on('folder-update', (event, tree) => callback(tree))
 })

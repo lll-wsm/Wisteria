@@ -45,7 +45,10 @@ function createMenu() {
         { role: 'copy' },
         { role: 'paste' },
         { role: 'delete' },
-        { role: 'selectAll' }
+        { role: 'selectAll' },
+        { type: 'separator' },
+        { label: 'Find', accelerator: 'CmdOrCtrl+F', click: (menuItem, browserWindow) => { const win = browserWindow || BrowserWindow.getFocusedWindow(); if (win) win.webContents.send('menu-find') } },
+        { label: 'Replace', accelerator: isMac ? 'Cmd+Alt+F' : 'Ctrl+H', click: (menuItem, browserWindow) => { const win = browserWindow || BrowserWindow.getFocusedWindow(); if (win) win.webContents.send('menu-replace') } }
       ]
     },
     {
