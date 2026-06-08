@@ -196,13 +196,37 @@ const arrowCtrl = (ContentState) => {
     ) {
       event.preventDefault()
       event.stopPropagation()
-      if (!preBlock) return
-      const key = preBlock.key
-      const offset = preBlock.text.length
+      let key
+      let offset
+      let newBlock
+      if (preBlock) {
+        key = preBlock.key
+        offset = preBlock.text.length
+      } else {
+        // If at the very top of the document, check if we are inside a container block (code block, table, math, etc.)
+        let isContainer = false
+        let node = block
+        while (node) {
+          if (/pre|table|figure/.test(node.type)) {
+            isContainer = true
+            break
+          }
+          node = node.parent ? this.getBlock(node.parent) : null
+        }
+        if (isContainer) {
+          newBlock = this.createBlockP()
+          const firstBlock = this.blocks[0]
+          this.insertBefore(newBlock, firstBlock)
+          key = newBlock.children[0].key
+          offset = 0
+        } else {
+          return
+        }
+      }
       this.cursor = {
         start: { key, offset },
         end: { key, offset },
-        isEdit: false
+        isEdit: !!newBlock
       }
 
       return this.partialRender()

@@ -268,7 +268,8 @@ class ExportMarkdown {
 
   normalizeCodeBlock(block, indent) {
     const result = []
-    const codeContent = block.children[1].children[0]
+    const codeBlock = block.children.find(c => c.type === 'code')
+    const codeContent = codeBlock.children[0]
     const textList = codeContent.text.split('\n')
     const { functionType } = block
     if (functionType === 'fencecode') {

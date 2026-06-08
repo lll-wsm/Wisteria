@@ -103,7 +103,9 @@ export default function renderLeafBlock(parent, block, activeBlocks, matches, us
     } else if (
       HAS_TEXT_BLOCK_REG.test(type) &&
       functionType !== 'codeContent' &&
-      functionType !== 'languageInput'
+      functionType !== 'languageInput' &&
+      functionType !== 'topFence' &&
+      functionType !== 'bottomFence'
     ) {
       const hasBeginRules = /paragraphContent|atxLine/.test(functionType)
 
@@ -253,7 +255,15 @@ export default function renderLeafBlock(parent, block, activeBlocks, matches, us
     } else {
       children = htmlToVNode(code)
     }
+  } else if (type === 'span' && functionType === 'topFence') {
+    const escapedText = sanitize(text, PREVIEW_DOMPURIFY_CONFIG, true)
+    const html = getHighlightHtml(escapedText, highlights, true)
+    children = htmlToVNode(html)
   } else if (type === 'span' && functionType === 'languageInput') {
+    const escapedText = sanitize(text, PREVIEW_DOMPURIFY_CONFIG, true)
+    const html = getHighlightHtml(escapedText, highlights, true)
+    children = htmlToVNode(html)
+  } else if (type === 'span' && functionType === 'bottomFence') {
     const escapedText = sanitize(text, PREVIEW_DOMPURIFY_CONFIG, true)
     const html = getHighlightHtml(escapedText, highlights, true)
     children = htmlToVNode(html)

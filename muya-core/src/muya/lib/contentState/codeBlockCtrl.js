@@ -67,7 +67,7 @@ const codeBlockCtrl = (ContentState) => {
       const nextSibling = this.getNextSibling(block)
 
       // Only update code language if necessary
-      if (block.text !== lang || preBlock.text !== lang || nextSibling.text !== lang) {
+      if (block.text !== lang || preBlock.lang !== lang || nextSibling.lang !== lang) {
         block.text = lang
         preBlock.lang = lang
         preBlock.functionType = 'fencecode'
@@ -114,9 +114,17 @@ const codeBlockCtrl = (ContentState) => {
         lang: language,
         functionType: 'codeContent'
       })
+      const topBlock = this.createBlock('span', {
+        text: '```',
+        functionType: 'topFence'
+      })
       const inputBlock = this.createBlock('span', {
         text: language,
         functionType: 'languageInput'
+      })
+      const bottomBlock = this.createBlock('span', {
+        text: '```',
+        functionType: 'bottomFence'
       })
 
       if (language) {
@@ -131,8 +139,10 @@ const codeBlockCtrl = (ContentState) => {
       block.children = []
 
       this.appendChild(codeBlock, codeContent)
+      this.appendChild(block, topBlock)
       this.appendChild(block, inputBlock)
       this.appendChild(block, codeBlock)
+      this.appendChild(block, bottomBlock)
       const { key } = codeContent
       const offset = code.length
       this.cursor = {

@@ -94,6 +94,15 @@ fn setup_menu(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         ],
     )?;
 
+    let find_item = MenuItem::with_id(handle, "find", "Find", true, Some("CmdOrCtrl+F"))?;
+    let replace_item = MenuItem::with_id(
+        handle,
+        "replace",
+        "Replace",
+        true,
+        if cfg!(target_os = "macos") { Some("Cmd+Alt+F") } else { Some("Ctrl+H") },
+    )?;
+
     let edit_menu = Submenu::with_items(
         handle,
         "Edit",
@@ -106,6 +115,9 @@ fn setup_menu(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             &PredefinedMenuItem::copy(handle, None)?,
             &PredefinedMenuItem::paste(handle, None)?,
             &PredefinedMenuItem::select_all(handle, None)?,
+            &PredefinedMenuItem::separator(handle)?,
+            &find_item,
+            &replace_item,
         ],
     )?;
 
@@ -134,6 +146,8 @@ fn setup_menu(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             "export-html" => { let _ = app_handle.emit("menu-html", ()); }
             "preferences" => { let _ = app_handle.emit("menu-preferences", ()); }
             "toggle-sidebar" => { let _ = app_handle.emit("menu-toggle-sidebar", ()); }
+            "find" => { let _ = app_handle.emit("menu-find", ()); }
+            "replace" => { let _ = app_handle.emit("menu-replace", ()); }
             _ => {}
         }
     });

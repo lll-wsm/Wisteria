@@ -49,6 +49,84 @@ const deleteCtrl = (ContentState) => {
     if (start.key !== end.key || start.offset !== end.offset) {
       return
     }
+
+    // Intercept delete in code block fences/inputs to prevent DOM corruption
+    if (startBlock.type === 'span' && startBlock.key === endBlock.key && start.offset === end.offset) {
+      const { functionType } = startBlock
+      
+      if (functionType === 'topFence' && start.offset === startBlock.text.length) {
+        event.preventDefault()
+        event.stopPropagation()
+        const preBlock = this.getParent(startBlock)
+        const langInputBlock = preBlock.children.find(c => c.functionType === 'languageInput')
+        if (langInputBlock && langInputBlock.text.length > 0) {
+          langInputBlock.text = langInputBlock.text.substring(1)
+          preBlock.lang = langInputBlock.text
+          const codeBlock = preBlock.children.find(c => c.type === 'code')
+          if (codeBlock) {
+            codeBlock.lang = langInputBlock.text
+            codeBlock.children.forEach(c => (c.lang = langInputBlock.text))
+          }
+          this.partialRender()
+        }
+        return
+      }
+
+      if (functionType === 'languageInput' && start.offset === startBlock.text.length) {
+        event.preventDefault()
+        event.stopPropagation()
+        const preBlock = this.getParent(startBlock)
+        const codeBlock = preBlock.children.find(c => c.type === 'code')
+        if (codeBlock) {
+          const codeContent = codeBlock.children[0]
+          const key = codeContent.key
+          const offset = 0
+          this.cursor = {
+            start: { key, offset },
+            end: { key, offset },
+            isEdit: true
+          }
+          this.partialRender()
+        }
+        return
+      }
+
+      if (functionType === 'codeContent' && start.offset === startBlock.text.length) {
+        event.preventDefault()
+        event.stopPropagation()
+        const codeBlock = this.getParent(startBlock)
+        const preBlock = this.getParent(codeBlock)
+        const bottomFenceBlock = preBlock.children.find(c => c.functionType === 'bottomFence')
+        if (bottomFenceBlock) {
+          const key = bottomFenceBlock.key
+          const offset = 0
+          this.cursor = {
+            start: { key, offset },
+            end: { key, offset },
+            isEdit: true
+          }
+          this.partialRender()
+        }
+        return
+      }
+
+      if (functionType === 'bottomFence' && start.offset === startBlock.text.length) {
+        event.preventDefault()
+        event.stopPropagation()
+        const nextBlock = this.findNextBlockInLocation(startBlock)
+        if (nextBlock) {
+          const key = nextBlock.key
+          const offset = 0
+          this.cursor = {
+            start: { key, offset },
+            end: { key, offset },
+            isEdit: true
+          }
+          this.partialRender()
+        }
+        return
+      }
+    }
     // Only handle h1~h6 span block
     const { type, text, key } = startBlock
     if (/span/.test(type) && start.offset === 0 && text[1] === '\n') {

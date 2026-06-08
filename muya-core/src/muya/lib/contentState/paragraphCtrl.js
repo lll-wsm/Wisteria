@@ -264,7 +264,8 @@ const paragraphCtrl = (ContentState) => {
       /code/.test(affiliation[0].functionType)
     ) {
       const codeBlock = affiliation[0]
-      const codeContent = codeBlock.children[1].children[0].text
+      const subCodeBlock = codeBlock.children.find(c => c.type === 'code')
+      const codeContent = subCodeBlock.children[0].text
       const states = this.markdownToState(codeContent)
 
       for (const state of states) {
@@ -295,7 +296,13 @@ const paragraphCtrl = (ContentState) => {
             lang
           })
 
+          const topBlock = this.createBlock('span', {
+            text: '```',
+            functionType: 'topFence'
+          })
+
           const inputBlock = this.createBlock('span', {
+            text: lang,
             functionType: 'languageInput'
           })
 
@@ -305,9 +312,16 @@ const paragraphCtrl = (ContentState) => {
             functionType: 'codeContent'
           })
 
+          const bottomBlock = this.createBlock('span', {
+            text: '```',
+            functionType: 'bottomFence'
+          })
+
           this.appendChild(codeBlock, codeContent)
+          this.appendChild(preBlock, topBlock)
           this.appendChild(preBlock, inputBlock)
           this.appendChild(preBlock, codeBlock)
+          this.appendChild(preBlock, bottomBlock)
           this.insertBefore(preBlock, anchorBlock)
 
           this.removeBlock(anchorBlock)
@@ -351,12 +365,23 @@ const paragraphCtrl = (ContentState) => {
           lang,
           functionType: 'codeContent'
         })
+        const topBlock = this.createBlock('span', {
+          text: '```',
+          functionType: 'topFence'
+        })
         const inputBlock = this.createBlock('span', {
+          text: lang,
           functionType: 'languageInput'
         })
+        const bottomBlock = this.createBlock('span', {
+          text: '```',
+          functionType: 'bottomFence'
+        })
         this.appendChild(codeBlock, codeContent)
+        this.appendChild(preBlock, topBlock)
         this.appendChild(preBlock, inputBlock)
         this.appendChild(preBlock, codeBlock)
+        this.appendChild(preBlock, bottomBlock)
         this.insertAfter(preBlock, referBlock)
         let i
         const removeCache = []

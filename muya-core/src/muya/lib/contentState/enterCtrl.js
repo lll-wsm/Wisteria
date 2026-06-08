@@ -261,6 +261,33 @@ const enterCtrl = (ContentState) => {
     const endBlock = this.getBlock(end.key)
     let parent = this.getParent(block)
 
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+    const isCmdOrCtrl = isMac ? event.metaKey : event.ctrlKey
+
+    // Cmd/Ctrl+Enter inside code block: insert a paragraph below/above the code block
+    if (isCmdOrCtrl && block.type === 'span' && block.functionType === 'codeContent') {
+      event.preventDefault()
+      event.stopPropagation()
+
+      const preBlock = this.getParent(parent) // grandparent is pre
+      const newBlock = this.createBlockP()
+
+      if (event.shiftKey) {
+        this.insertBefore(newBlock, preBlock)
+      } else {
+        this.insertAfter(newBlock, preBlock)
+      }
+
+      const key = newBlock.children[0].key
+      const offset = 0
+      this.cursor = {
+        start: { key, offset },
+        end: { key, offset },
+        isEdit: true
+      }
+      return this.partialRender()
+    }
+
     event.preventDefault()
 
     // Don't allow new lines in language identifiers (GH#569)

@@ -1230,3 +1230,162 @@ table tr .ag-drag-handler:hover {
   box-shadow: 0 4px 12px rgba(124, 77, 255, 0.25);
   outline: 2px solid var(--accent-color);
 }
+
+/* ==========================================
+   Find and Replace Panel Styles
+   ========================================== */
+#find-replace-panel {
+  position: absolute;
+  top: 12px;
+  right: 24px;
+  z-index: 1000;
+  background-color: var(--floatBgColor);
+  border: 1px solid var(--floatBorderColor);
+  box-shadow: var(--floatShadow);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: var(--font-family);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 330px;
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  transition: all 0.2s ease;
+}
+
+#find-replace-panel.hidden {
+  display: none;
+}
+
+#find-replace-panel .find-row,
+#find-replace-panel .replace-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#find-replace-panel .replace-row.hidden {
+  display: none;
+}
+
+#find-replace-panel .spacer {
+  width: 24px; /* Matches the toggle replace button width */
+}
+
+#find-replace-panel .input-wrapper {
+  position: relative;
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  background-color: var(--bg-color);
+  border: 1px solid var(--menu-border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#find-replace-panel .input-wrapper:focus-within {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--selectionColor);
+}
+
+#find-replace-panel input {
+  border: none;
+  background: transparent;
+  color: var(--text-color);
+  font-family: var(--font-family);
+  font-size: 13px;
+  outline: none;
+  flex-grow: 1;
+  width: 140px;
+  padding: 4px 0;
+}
+
+#find-replace-panel .input-actions {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+#find-replace-panel .toggle-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--editorColor80);
+  font-family: var(--font-family);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+#find-replace-panel .toggle-btn:hover {
+  background-color: var(--editorColor10);
+  color: var(--text-color);
+}
+
+#find-replace-panel .toggle-btn.active {
+  background-color: var(--selectionColor);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+#find-count {
+  font-size: 11px;
+  color: var(--editorColor50);
+  min-width: 65px;
+  text-align: right;
+  user-select: none;
+  white-space: nowrap;
+}
+
+#find-count.has-results {
+  color: var(--editorColor80);
+}
+
+#find-replace-panel .panel-btn {
+  border: none;
+  background: transparent;
+  color: var(--editorColor80);
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+#find-replace-panel .panel-btn:hover {
+  background-color: var(--editorColor10);
+  color: var(--text-color);
+}
+
+#find-replace-panel .replace-actions {
+  display: flex;
+  gap: 4px;
+}
+
+#find-toggle-replace {
+  transition: transform 0.2s ease;
+}
+
+#find-toggle-replace.expanded {
+  transform: rotate(90deg);
+}
+
+/* Invalid Regular Expression input style */
+#find-replace-panel .input-wrapper.invalid-regex {
+  border-color: var(--deleteColor) !important;
+  box-shadow: 0 0 0 2px rgba(255, 82, 82, 0.2) !important;
+}
+

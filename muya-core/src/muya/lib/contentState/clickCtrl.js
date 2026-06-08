@@ -8,6 +8,7 @@ const clickCtrl = (ContentState) => {
   ContentState.prototype.clickHandler = function(event) {
     const { eventCenter } = this.muya
     const { target } = event
+
     if (isMuyaEditorElement(target)) {
       const lastBlock = this.getLastBlock()
       const archor = this.findOutMostBlock(lastBlock)

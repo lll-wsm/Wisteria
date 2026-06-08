@@ -189,8 +189,9 @@ const importRegister = (ContentState) => {
             block = this.createContainerBlock(lang, value)
             this.appendChild(parentList[0], block)
           } else {
+            const isFenced = codeBlockStyle === 'fenced'
             block = this.createBlock('pre', {
-              functionType: codeBlockStyle === 'fenced' ? 'fencecode' : 'indentcode',
+              functionType: isFenced ? 'fencecode' : 'indentcode',
               lang
             })
             const codeBlock = this.createBlock('code', {
@@ -201,31 +202,48 @@ const importRegister = (ContentState) => {
               lang,
               functionType: 'codeContent'
             })
-            const inputBlock = this.createBlock('span', {
-              text: lang,
-              functionType: 'languageInput'
-            })
+            this.appendChild(codeBlock, codeContent)
+
             if (lang && !languageLoaded.has(lang)) {
               languageLoaded.add(lang)
               loadLanguage(lang)
                 .then((infoList) => {
                   if (!Array.isArray(infoList)) return
-                  // There are three status `loaded`, `noexist` and `cached`.
-                  // if the status is `loaded`, indicated that it's a new loaded language
                   const needRender = infoList.some(({ status }) => status === 'loaded')
                   if (needRender) {
                     this.render()
                   }
                 })
                 .catch((err) => {
-                  // if no parameter provided, will cause error.
                   console.warn(err)
                 })
             }
 
-            this.appendChild(codeBlock, codeContent)
-            this.appendChild(block, inputBlock)
-            this.appendChild(block, codeBlock)
+            if (isFenced) {
+              const topBlock = this.createBlock('span', {
+                text: '```',
+                functionType: 'topFence'
+              })
+              const inputBlock = this.createBlock('span', {
+                text: lang,
+                functionType: 'languageInput'
+              })
+              const bottomBlock = this.createBlock('span', {
+                text: '```',
+                functionType: 'bottomFence'
+              })
+              this.appendChild(block, topBlock)
+              this.appendChild(block, inputBlock)
+              this.appendChild(block, codeBlock)
+              this.appendChild(block, bottomBlock)
+            } else {
+              const inputBlock = this.createBlock('span', {
+                text: '',
+                functionType: 'languageInput'
+              })
+              this.appendChild(block, inputBlock)
+              this.appendChild(block, codeBlock)
+            }
             this.appendChild(parentList[0], block)
           }
           break

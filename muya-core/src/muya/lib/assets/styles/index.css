@@ -735,6 +735,11 @@ pre.ag-active[data-role='vega-lite']::after {
   content: '```';
 }
 
+pre.ag-active.ag-fence-code::before,
+pre.ag-active.ag-fence-code::after {
+  content: none !important;
+}
+
 pre.ag-active.ag-front-matter::before,
 pre.ag-active.ag-front-matter::after,
 pre.ag-active[data-role='mermaid']::before,
@@ -880,7 +885,8 @@ span.ag-emoji-marked-text {
 }
 
 .ag-fence-code .ag-language-input {
-  left: 20px;
+  left: 30px;
+  padding: 0;
 }
 
 .ag-indent-code .ag-language-input {
@@ -892,6 +898,44 @@ span.ag-emoji-marked-text {
 }
 
 pre.ag-active .ag-language-input {
+  display: block;
+}
+
+.ag-top-fence {
+  display: none;
+  min-width: 30px;
+  position: absolute;
+  top: -23px;
+  left: 0;
+  font-size: 14px;
+  font-family: monospace;
+  font-weight: 100;
+  color: var(--editorColor30);
+  background: transparent;
+  border: none;
+  z-index: 1;
+}
+
+pre.ag-active .ag-top-fence {
+  display: block;
+}
+
+.ag-bottom-fence {
+  display: none;
+  min-width: 30px;
+  position: absolute;
+  bottom: -23px;
+  left: 0;
+  font-size: 14px;
+  font-family: monospace;
+  font-weight: 100;
+  color: var(--editorColor30);
+  background: transparent;
+  border: none;
+  z-index: 1;
+}
+
+pre.ag-active .ag-bottom-fence {
   display: block;
 }
 

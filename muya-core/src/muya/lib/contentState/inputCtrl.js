@@ -301,6 +301,23 @@ const inputCtrl = (ContentState) => {
       if (block.functionType === 'languageInput') {
         const parent = this.getParent(block)
         parent.lang = block.text
+        const codeBlock = parent.children.find(c => c.type === 'code')
+        if (codeBlock) {
+          codeBlock.lang = block.text
+          codeBlock.children.forEach(c => (c.lang = block.text))
+        }
+      }
+
+      if (block.functionType === 'topFence') {
+        if (!/^`{3,}/.test(block.text)) {
+          return this.degradeCodeBlock(block)
+        }
+      }
+
+      if (block.functionType === 'bottomFence') {
+        if (!/^`{3,}/.test(block.text)) {
+          return this.degradeCodeBlock(block)
+        }
       }
 
       if (beginRules.reference_definition.test(text)) {
@@ -368,6 +385,65 @@ const inputCtrl = (ContentState) => {
     if (checkMarkedUpdate || inlineUpdatedBlock || needRender) {
       return needRenderAll ? this.render() : this.partialRender()
     }
+  }
+
+  ContentState.prototype.degradeCodeBlock = function(block) {
+    const preBlock = this.getParent(block)
+    const codeBlock = preBlock.children.find(c => c.type === 'code')
+    const codeContent = codeBlock.children[0]
+    
+    // Get the language line text
+    const topFenceBlock = preBlock.children.find(c => c.functionType === 'topFence')
+    const topFenceText = topFenceBlock ? topFenceBlock.text : ''
+    const langInputBlock = preBlock.children.find(c => c.functionType === 'languageInput')
+    const langInputText = langInputBlock ? langInputBlock.text : ''
+    const codeText = codeContent.text
+    
+    // Create a paragraph for the language line, and one for each line of the code content
+    const firstP = this.createBlockP()
+    firstP.children[0].text = topFenceText + langInputText
+    this.insertBefore(firstP, preBlock)
+    
+    let lastBlock = firstP
+    if (codeText) {
+      const codeLines = codeText.split('\n')
+      for (const line of codeLines) {
+        const newP = this.createBlockP()
+        newP.children[0].text = line
+        this.insertAfter(newP, lastBlock)
+        lastBlock = newP
+      }
+    }
+
+    let bottomP = null
+    if (block.functionType === 'bottomFence') {
+      bottomP = this.createBlockP()
+      bottomP.children[0].text = block.text
+      this.insertAfter(bottomP, lastBlock)
+      lastBlock = bottomP
+    }
+    
+    this.removeBlock(preBlock)
+    
+    // Place the cursor
+    let key, offset
+    if (block.functionType === 'bottomFence' && bottomP) {
+      // If they degraded from the bottom fence, put the cursor in the bottom paragraph
+      key = bottomP.children[0].key
+      offset = block.text.length
+    } else {
+      // If from the top fence, put the cursor in the first paragraph
+      key = firstP.children[0].key
+      const { start } = this.cursor
+      offset = start.offset
+    }
+    
+    this.cursor = {
+      start: { key, offset },
+      end: { key, offset },
+      isEdit: true
+    }
+    this.render()
   }
 }
 
