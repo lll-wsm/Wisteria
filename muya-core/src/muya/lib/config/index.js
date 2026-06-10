@@ -228,6 +228,7 @@ export const CLASS_OR_ID = Object.freeze(
     'AG_HARD_LINE_BREAK',
     'AG_HARD_LINE_BREAK_SPACE',
     'AG_LINE_END',
+    'AG_DUMMY_LINE_END',
     'AG_HEADER_TIGHT_SPACE',
     'AG_HIDE',
     'AG_HIGHLIGHT',

@@ -369,9 +369,23 @@ const enterCtrl = (ContentState) => {
       }
       return this.partialRender()
     } else if (block.type === 'span' && block.functionType === 'codeContent') {
+      event.stopPropagation()
+      if (this.renderCodeBlockTimer) {
+        clearTimeout(this.renderCodeBlockTimer)
+        this.renderCodeBlockTimer = null
+      }
       const { text, key } = block
       const autoIndent = checkAutoIndent(text, start.offset)
-      const indent = getCodeblockIndentSpace(text.substring(1, start.offset))
+      const indent = getCodeblockIndentSpace(text.substring(0, start.offset))
+      console.log('[DEBUG enterHandler codeContent]', {
+        key,
+        text,
+        textLen: text.length,
+        startOffset: start.offset,
+        autoIndent,
+        indent: JSON.stringify(indent),
+        tabSize: this.tabSize
+      })
       block.text =
         text.substring(0, start.offset) +
         '\n' +
@@ -385,12 +399,20 @@ const enterCtrl = (ContentState) => {
         offset += this.tabSize
       }
 
+      console.log('[DEBUG enterHandler result]', {
+        newText: block.text,
+        newTextLen: block.text.length,
+        newOffset: offset,
+        cursorKey: key
+      })
+
       this.cursor = {
         start: { key, offset },
         end: { key, offset },
         isEdit: true
       }
-      return this.partialRender()
+      // Use singleRender to patch the codeContent DOM in-place
+      return this.singleRender(block)
     }
 
     // Insert `<br/>` in table cell if you want to open a new line.
@@ -629,7 +651,7 @@ const enterCtrl = (ContentState) => {
 
     switch (true) {
       case !!blockNeedFocus:
-        cursorBlock = block
+        cursorBlock = blockNeedFocus
         break
       case !!tableNeedFocus:
         cursorBlock = tableNeedFocus

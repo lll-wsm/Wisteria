@@ -143,14 +143,15 @@ const codeBlockCtrl = (ContentState) => {
       this.appendChild(block, inputBlock)
       this.appendChild(block, codeBlock)
       this.appendChild(block, bottomBlock)
-      const { key } = codeContent
-      const offset = code.length
+      const cursorBlock = (code || language) ? codeContent : inputBlock
+      const { key } = cursorBlock
+      const offset = cursorBlock.text.length
       this.cursor = {
         start: { key, offset },
         end: { key, offset },
         isEdit: false
       }
-      return true
+      return cursorBlock
     }
     return false
   }

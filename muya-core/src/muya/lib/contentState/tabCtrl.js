@@ -202,7 +202,8 @@ const tabCtrl = (ContentState) => {
   ContentState.prototype.insertTab = function(event) {
     const tabSize = this.tabSize
     const tabCharacter = String.fromCharCode(32).repeat(tabSize)
-    const { start, end } = this.cursor
+    const cursor = selection.getCursorRange()
+    const { start, end } = cursor.start && cursor.end ? cursor : this.cursor
     const startBlock = this.getBlock(start.key)
     const endBlock = this.getBlock(end.key)
     if (start.key === end.key && start.offset === end.offset) {
@@ -216,6 +217,11 @@ const tabCtrl = (ContentState) => {
         start: { key, offset },
         end: { key, offset },
         isEdit: false
+      }
+      // Use singleRender for codeContent to avoid DOM replacement issues
+      // during keydown event processing
+      if (startBlock.type === 'span' && startBlock.functionType === 'codeContent') {
+        return this.singleRender(startBlock)
       }
       return this.partialRender()
     } else if (
@@ -557,6 +563,14 @@ const tabCtrl = (ContentState) => {
 
     if (start.key !== end.key) {
       return this.multilineTabHandler(event, start, end, startBlock, endBlock)
+    }
+
+    if (startBlock.functionType === 'codeContent') {
+      if (this.renderCodeBlockTimer) {
+        clearTimeout(this.renderCodeBlockTimer)
+        this.renderCodeBlockTimer = null
+      }
+      return this.insertTab(event)
     }
 
     if (event.shiftKey && startBlock.functionType !== 'cellContent') {

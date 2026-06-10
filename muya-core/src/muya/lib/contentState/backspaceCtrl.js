@@ -170,43 +170,44 @@ const backspaceCtrl = (ContentState) => {
     // Intercept backspace in code block fences/inputs to prevent DOM corruption
     if (startBlock.type === 'span' && startBlock.key === endBlock.key && start.offset === end.offset) {
       const { functionType } = startBlock
-      
-      if (functionType === 'topFence' && start.offset === 0) {
-        event.preventDefault()
-        event.stopPropagation()
-        const prevBlock = this.findPreBlockInLocation(startBlock)
-        if (prevBlock) {
-          const key = prevBlock.key
-          const offset = prevBlock.text.length
-          this.cursor = {
-            start: { key, offset },
-            end: { key, offset },
-            isEdit: true
+
+      if (functionType === 'topFence') {
+        if (start.offset === 0) {
+          event.preventDefault()
+          event.stopPropagation()
+          const prevBlock = this.findPreBlockInLocation(startBlock)
+          if (prevBlock) {
+            const key = prevBlock.key
+            const offset = prevBlock.text.length
+            this.cursor = {
+              start: { key, offset },
+              end: { key, offset },
+              isEdit: true
+            }
+            return this.partialRender()
           }
-          this.partialRender()
+          return
         }
-        return
       }
 
-      if (functionType === 'languageInput' && start.offset === 0) {
-        event.preventDefault()
-        event.stopPropagation()
-        const preBlock = this.getParent(startBlock)
-        const topFenceBlock = preBlock.children.find(c => c.functionType === 'topFence')
-        if (topFenceBlock) {
-          topFenceBlock.text = topFenceBlock.text.slice(0, -1)
-          if (topFenceBlock.text.length < 3) {
-            this.degradeCodeBlock(topFenceBlock)
-          } else {
+      if (functionType === 'languageInput') {
+        if (start.offset === 0) {
+          event.preventDefault()
+          event.stopPropagation()
+          const preBlock = this.getParent(startBlock)
+          const topFenceBlock = preBlock.children.find(c => c.functionType === 'topFence')
+          if (topFenceBlock) {
+            const key = topFenceBlock.key
+            const offset = topFenceBlock.text.length
             this.cursor = {
-              start: { key: topFenceBlock.key, offset: topFenceBlock.text.length },
-              end: { key: topFenceBlock.key, offset: topFenceBlock.text.length },
+              start: { key, offset },
+              end: { key, offset },
               isEdit: true
             }
             this.partialRender()
           }
+          return
         }
-        return
       }
 
       if (functionType === 'codeContent' && start.offset === 0) {
@@ -228,23 +229,25 @@ const backspaceCtrl = (ContentState) => {
         return
       }
 
-      if (functionType === 'bottomFence' && start.offset === 0) {
-        event.preventDefault()
-        event.stopPropagation()
-        const preBlock = this.getParent(startBlock)
-        const codeBlock = preBlock.children.find(c => c.type === 'code')
-        if (codeBlock) {
-          const codeContent = codeBlock.children[0]
-          const key = codeContent.key
-          const offset = codeContent.text.length
-          this.cursor = {
-            start: { key, offset },
-            end: { key, offset },
-            isEdit: true
+      if (functionType === 'bottomFence') {
+        if (start.offset === 0) {
+          event.preventDefault()
+          event.stopPropagation()
+          const preBlock = this.getParent(startBlock)
+          const codeBlock = preBlock.children.find(c => c.type === 'code')
+          if (codeBlock) {
+            const codeContent = codeBlock.children[0]
+            const key = codeContent.key
+            const offset = codeContent.text.length
+            this.cursor = {
+              start: { key, offset },
+              end: { key, offset },
+              isEdit: true
+            }
+            this.partialRender()
           }
-          this.partialRender()
+          return
         }
-        return
       }
     }
     // Just for fix delete the last `#` or all the atx heading cause error @fixme

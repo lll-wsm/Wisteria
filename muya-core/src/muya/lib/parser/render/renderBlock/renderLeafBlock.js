@@ -235,7 +235,7 @@ export default function renderLeafBlock(parent, block, activeBlocks, matches, us
     }
     children = ''
   } else if (type === 'span' && functionType === 'codeContent') {
-    const code = getHighlightHtml(text, highlights, true, true)
+    const code = getHighlightHtml(text, highlights, true, false)
       .replace(new RegExp(MARKER_HASK['<'], 'g'), '<')
       .replace(new RegExp(MARKER_HASK['>'], 'g'), '>')
       .replace(new RegExp(MARKER_HASK['"'], 'g'), '"')
@@ -255,6 +255,12 @@ export default function renderLeafBlock(parent, block, activeBlocks, matches, us
     } else {
       children = htmlToVNode(code)
     }
+
+    // Append a <br> as trailing cursor anchor. Unlike the old <span contenteditable="false">\n</span>,
+    // a <br> reliably tells the browser "there is a line here" and allows the caret to be positioned
+    // on the empty trailing line after the last \n in the code.
+    const dummyVNode = h('br.ag-dummy-line-end')
+    children = [...children, dummyVNode]
   } else if (type === 'span' && functionType === 'topFence') {
     const escapedText = sanitize(text, PREVIEW_DOMPURIFY_CONFIG, true)
     const html = getHighlightHtml(escapedText, highlights, true)

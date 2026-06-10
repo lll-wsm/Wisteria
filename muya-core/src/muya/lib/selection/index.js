@@ -470,7 +470,14 @@ class Selection {
   }
 
   setCursorRange(cursorRange) {
-    const { anchor, focus } = cursorRange
+    // Fall back to start/end when anchor/focus are not present.
+    const anchor = cursorRange.anchor || cursorRange.start
+    const focus = cursorRange.focus || cursorRange.end
+
+    if (!anchor || !focus) {
+      console.warn('[setCursorRange] Missing anchor/focus and start/end:', cursorRange)
+      return
+    }
 
     const anchorParagraph = this.doc.querySelector(`#${anchor.key}`)
     const focusParagraph = this.doc.querySelector(`#${focus.key}`)
@@ -490,11 +497,37 @@ class Selection {
       const len = childNodes.length
       let i
       let count = 0
+      let firstNonEditableIndex = len
       for (i = 0; i < len; i++) {
         const child = childNodes[i]
+
+        // Handle <br> elements used as cursor anchors (e.g. br.ag-dummy-line-end).
+        // A <br> has textContent "" (length 0) but serves as a line break target.
+        // When all text is consumed (count >= offset), position the cursor at
+        // {parent, br_index}, which the browser interprets as "caret on the line
+        // the <br> creates."
+        if (child.nodeName === 'BR') {
+          if (count >= offset) {
+            return { node, offset: i }
+          }
+          continue
+        }
+
+        if (child.nodeType === 1 && child.getAttribute('contenteditable') === 'false') {
+          if (firstNonEditableIndex === len) {
+            firstNonEditableIndex = i
+          }
+          if (count >= offset) {
+            return { node, offset: i }
+          }
+          continue
+        }
+        firstNonEditableIndex = len
+
         const textContent = getTextContent(child, [
           CLASS_OR_ID.AG_MATH_RENDER,
-          CLASS_OR_ID.AG_RUBY_RENDER
+          CLASS_OR_ID.AG_RUBY_RENDER,
+          CLASS_OR_ID.AG_DUMMY_LINE_END
         ])
         const textLength = textContent.length
         if (child.classList && child.classList.contains(CLASS_OR_ID.AG_FRONT_ICON)) {
@@ -545,7 +578,8 @@ class Selection {
                 }
                 const childTextLen = getTextContent(grandchild, [
                   CLASS_OR_ID.AG_MATH_RENDER,
-                  CLASS_OR_ID.AG_RUBY_RENDER
+                  CLASS_OR_ID.AG_RUBY_RENDER,
+                  CLASS_OR_ID.AG_DUMMY_LINE_END
                 ]).length
                 if (childTextLen > 0 && remaining <= childTextLen) {
                   return getNodeAndOffset(grandchild, remaining)
@@ -565,7 +599,7 @@ class Selection {
           count += textLength
         }
       }
-      return { node, offset }
+      return { node, offset: firstNonEditableIndex }
     }
 
     let anchorNode, anchorOffset
@@ -613,8 +647,10 @@ class Selection {
 
     // First set the anchor node and anchor offset, make it collapsed
     this.select(anchorNode, anchorOffset)
-    // Secondly, set the focus node and focus offset.
-    this.setFocus(focusNode, focusOffset)
+    // Secondly, set the focus node and focus offset if not collapsed.
+    if (anchorNode !== focusNode || anchorOffset !== focusOffset) {
+      this.setFocus(focusNode, focusOffset)
+    }
   }
 
   isValidCursorNode(node) {
@@ -802,7 +838,8 @@ class Selection {
         for (let i = 0; i < offset; i++) {
           result += getTextContent(node.childNodes[i], [
             CLASS_OR_ID.AG_MATH_RENDER,
-            CLASS_OR_ID.AG_RUBY_RENDER
+            CLASS_OR_ID.AG_RUBY_RENDER,
+            CLASS_OR_ID.AG_DUMMY_LINE_END
           ]).length
         }
       }
@@ -829,12 +866,14 @@ class Selection {
         aOffset += getOffsetOfParagraph(preElement, anchorParagraph)
         aOffset += getTextContent(preElement, [
           CLASS_OR_ID.AG_MATH_RENDER,
-          CLASS_OR_ID.AG_RUBY_RENDER
+          CLASS_OR_ID.AG_RUBY_RENDER,
+          CLASS_OR_ID.AG_DUMMY_LINE_END
         ]).length
       }
       aOffset += getTextContent(imageWrapper, [
         CLASS_OR_ID.AG_MATH_RENDER,
-        CLASS_OR_ID.AG_RUBY_RENDER
+        CLASS_OR_ID.AG_RUBY_RENDER,
+        CLASS_OR_ID.AG_DUMMY_LINE_END
       ]).length
       fOffset = aOffset
     }
@@ -853,13 +892,15 @@ class Selection {
         aOffset += getOffsetOfParagraph(preElement, anchorParagraph)
         aOffset += getTextContent(preElement, [
           CLASS_OR_ID.AG_MATH_RENDER,
-          CLASS_OR_ID.AG_RUBY_RENDER
+          CLASS_OR_ID.AG_RUBY_RENDER,
+          CLASS_OR_ID.AG_DUMMY_LINE_END
         ]).length
       }
       if (anchorOffset === 1) {
         aOffset += getTextContent(imageWrapper, [
           CLASS_OR_ID.AG_MATH_RENDER,
-          CLASS_OR_ID.AG_RUBY_RENDER
+          CLASS_OR_ID.AG_RUBY_RENDER,
+          CLASS_OR_ID.AG_DUMMY_LINE_END
         ]).length
       }
       fOffset = aOffset

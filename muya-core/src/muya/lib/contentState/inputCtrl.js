@@ -29,6 +29,76 @@ const BACK_HASH = {
 }
 
 const inputCtrl = (ContentState) => {
+  ContentState.prototype.codeContentKeydownHandler = function(event) {
+    if (
+      event.isComposing ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.altKey ||
+      event.key.length !== 1
+    ) {
+      return false
+    }
+
+    const { start, end } = selection.getCursorRange()
+    if (!start || !end || start.key !== end.key) {
+      return false
+    }
+
+    const block = this.getBlock(start.key)
+    if (!block || block.type !== 'span' || block.functionType !== 'codeContent') {
+      return false
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    const { autoPairBracket, autoPairQuote } = this.muya.options
+    const inputChar = event.key
+    const offset = start.offset
+    const postInputChar = block.text.charAt(end.offset)
+    let insertText = inputChar
+    let cursorOffset = offset + inputChar.length
+
+    if (
+      inputChar === postInputChar &&
+      ((autoPairQuote && /['"]/.test(inputChar)) ||
+        (autoPairBracket && /[\}\]\)]/.test(inputChar)))
+    ) {
+      insertText = ''
+      cursorOffset = offset + 1
+    } else if (
+      ((autoPairQuote && /['"]/.test(inputChar)) ||
+        (autoPairBracket && /[\{\[\(]/.test(inputChar))) &&
+      !/[\S]/.test(postInputChar)
+    ) {
+      insertText = inputChar + BRACKET_HASH[inputChar]
+      cursorOffset = offset + inputChar.length
+    }
+
+    console.log('[DEBUG codeContentKeydownHandler]', {
+      inputChar,
+      startOffset: offset,
+      endOffset: end.offset,
+      insertText,
+      cursorOffset,
+      textBefore: block.text,
+      blockKey: block.key
+    })
+
+    block.text = block.text.substring(0, offset) + insertText + block.text.substring(end.offset)
+    this.cursor = {
+      start: { key: block.key, offset: cursorOffset },
+      end: { key: block.key, offset: cursorOffset },
+      isEdit: true
+    }
+    // Use singleRender to patch the codeContent DOM in-place rather than
+    // destroying/recreating it with partialRender, which can cause cursor
+    // position loss during keydown event processing.
+    this.singleRender(block)
+    return true
+  }
+
   // Input @ to quick insert paragraph
   ContentState.prototype.checkQuickInsert = function(block) {
     const { type, text, functionType } = block
@@ -126,7 +196,7 @@ const inputCtrl = (ContentState) => {
       return this.inputHandler(event, true)
     }
 
-    let text = getTextContent(paragraph, [CLASS_OR_ID.AG_MATH_RENDER, CLASS_OR_ID.AG_RUBY_RENDER])
+    let text = getTextContent(paragraph, [CLASS_OR_ID.AG_MATH_RENDER, CLASS_OR_ID.AG_RUBY_RENDER, CLASS_OR_ID.AG_DUMMY_LINE_END])
 
     let needRender = false
     let needRenderAll = false
@@ -254,7 +324,7 @@ const inputCtrl = (ContentState) => {
                 /[*$`~_]{1}/.test(inputChar)))
           ) {
             needRender = true
-            text = BRACKET_HASH[event.data]
+            text = BRACKET_HASH[inputChar]
               ? text.substring(0, offset) + BRACKET_HASH[inputChar] + text.substring(offset)
               : text
           }
@@ -353,14 +423,18 @@ const inputCtrl = (ContentState) => {
 
     // Throttle render if edit in code block.
     if (block && block.type === 'span' && block.functionType === 'codeContent') {
+      this.cursor = { start, end, isEdit: true }
       if (this.renderCodeBlockTimer) {
         clearTimeout(this.renderCodeBlockTimer)
       }
       if (needRender) {
-        this.partialRender()
+        // Render synchronously using singleRender to patch DOM in-place.
+        // This avoids the cursor/content issues caused by partialRender's
+        // DOM destruction during event processing.
+        this.singleRender(block)
       } else {
         this.renderCodeBlockTimer = setTimeout(() => {
-          this.partialRender()
+          this.singleRender(block)
         }, 300)
       }
       return

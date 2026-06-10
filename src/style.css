@@ -215,6 +215,13 @@ pre.ag-multiple-math {
   border-radius: 2px;
 }
 
+/* Code Blocks Style to prevent cursor height stretching */
+pre.ag-fence-code,
+pre.ag-indent-code,
+.ag-code-content {
+  line-height: 1.5 !important;
+}
+
 /* Floating Menu Style */
 #floating-menu {
   position: absolute;

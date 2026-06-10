@@ -149,6 +149,11 @@ class Keyboard {
         return
       }
 
+      if (contentState.codeContentKeydownHandler(event)) {
+        this.muya.dispatchChange()
+        return
+      }
+
       if (
         Object.keys(this.shownFloat).length > 0 &&
         (event.key === EVENT_KEYS.Enter ||

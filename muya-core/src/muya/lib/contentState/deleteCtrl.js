@@ -22,11 +22,11 @@ const deleteCtrl = (ContentState) => {
       return
     }
     const startBlock = this.getBlock(start.key)
+    const endBlock = this.getBlock(end.key)
     const nextBlock = this.findNextBlockInLocation(startBlock)
 
     if (start.key !== end.key) {
       event.preventDefault()
-      const endBlock = this.getBlock(end.key)
       
       startBlock.text = startBlock.text.substring(0, start.offset) + endBlock.text.substring(end.offset)
       this.removeBlocks(startBlock, endBlock)
@@ -50,83 +50,120 @@ const deleteCtrl = (ContentState) => {
       return
     }
 
-    // Intercept delete in code block fences/inputs to prevent DOM corruption
+    // Intercept delete at code block sub-block boundaries to prevent DOM corruption.
     if (startBlock.type === 'span' && startBlock.key === endBlock.key && start.offset === end.offset) {
       const { functionType } = startBlock
-      
-      if (functionType === 'topFence' && start.offset === startBlock.text.length) {
-        event.preventDefault()
-        event.stopPropagation()
-        const preBlock = this.getParent(startBlock)
-        const langInputBlock = preBlock.children.find(c => c.functionType === 'languageInput')
-        if (langInputBlock && langInputBlock.text.length > 0) {
-          langInputBlock.text = langInputBlock.text.substring(1)
-          preBlock.lang = langInputBlock.text
+
+      if (functionType === 'topFence') {
+        if (start.offset === 0 || start.offset === startBlock.text.length) {
+          event.preventDefault()
+          event.stopPropagation()
+          const preBlock = this.getParent(startBlock)
+          const langInputBlock = preBlock.children.find(c => c.functionType === 'languageInput')
+          if (langInputBlock) {
+            const key = langInputBlock.key
+            this.cursor = {
+              start: { key, offset: 0 },
+              end: { key, offset: 0 },
+              isEdit: true
+            }
+            return this.partialRender()
+          }
+          return
+        }
+      }
+
+      if (functionType === 'languageInput') {
+        if (start.offset === startBlock.text.length) {
+          event.preventDefault()
+          event.stopPropagation()
+          const preBlock = this.getParent(startBlock)
           const codeBlock = preBlock.children.find(c => c.type === 'code')
           if (codeBlock) {
-            codeBlock.lang = langInputBlock.text
-            codeBlock.children.forEach(c => (c.lang = langInputBlock.text))
+            const codeContent = codeBlock.children[0]
+            const key = codeContent.key
+            this.cursor = {
+              start: { key, offset: 0 },
+              end: { key, offset: 0 },
+              isEdit: true
+            }
+            return this.partialRender()
           }
-          this.partialRender()
+          return
         }
-        return
       }
 
-      if (functionType === 'languageInput' && start.offset === startBlock.text.length) {
-        event.preventDefault()
-        event.stopPropagation()
-        const preBlock = this.getParent(startBlock)
-        const codeBlock = preBlock.children.find(c => c.type === 'code')
-        if (codeBlock) {
-          const codeContent = codeBlock.children[0]
-          const key = codeContent.key
-          const offset = 0
+      if (functionType === 'codeContent') {
+        if (start.offset < startBlock.text.length) {
+          event.preventDefault()
+          event.stopPropagation()
+          startBlock.text =
+            startBlock.text.substring(0, start.offset) + startBlock.text.substring(start.offset + 1)
           this.cursor = {
-            start: { key, offset },
-            end: { key, offset },
+            start: { key: startBlock.key, offset: start.offset },
+            end: { key: startBlock.key, offset: start.offset },
             isEdit: true
           }
-          this.partialRender()
+          return this.partialRender()
         }
-        return
+
+        if (start.offset === startBlock.text.length) {
+          event.preventDefault()
+          event.stopPropagation()
+          const codeBlock = this.getParent(startBlock)
+          const preBlock = this.getParent(codeBlock)
+          const bottomFenceBlock = preBlock.children.find(c => c.functionType === 'bottomFence')
+          if (bottomFenceBlock) {
+            const key = bottomFenceBlock.key
+            this.cursor = {
+              start: { key, offset: 0 },
+              end: { key, offset: 0 },
+              isEdit: true
+            }
+            return this.partialRender()
+          }
+          return
+        }
       }
 
-      if (functionType === 'codeContent' && start.offset === startBlock.text.length) {
-        event.preventDefault()
-        event.stopPropagation()
-        const codeBlock = this.getParent(startBlock)
-        const preBlock = this.getParent(codeBlock)
-        const bottomFenceBlock = preBlock.children.find(c => c.functionType === 'bottomFence')
-        if (bottomFenceBlock) {
-          const key = bottomFenceBlock.key
-          const offset = 0
-          this.cursor = {
-            start: { key, offset },
-            end: { key, offset },
-            isEdit: true
+      if (functionType === 'bottomFence') {
+        if (start.offset === 0) {
+          event.preventDefault()
+          event.stopPropagation()
+          const preBlock = this.getParent(startBlock)
+          const codeBlock = preBlock.children.find(c => c.type === 'code')
+          if (codeBlock) {
+            const codeContent = codeBlock.children[0]
+            const key = codeContent.key
+            const offset = codeContent.text.length
+            this.cursor = {
+              start: { key, offset },
+              end: { key, offset },
+              isEdit: true
+            }
+            return this.partialRender()
           }
-          this.partialRender()
+          return
         }
-        return
-      }
 
-      if (functionType === 'bottomFence' && start.offset === startBlock.text.length) {
-        event.preventDefault()
-        event.stopPropagation()
-        const nextBlock = this.findNextBlockInLocation(startBlock)
-        if (nextBlock) {
-          const key = nextBlock.key
-          const offset = 0
-          this.cursor = {
-            start: { key, offset },
-            end: { key, offset },
-            isEdit: true
+        if (start.offset === startBlock.text.length) {
+          event.preventDefault()
+          event.stopPropagation()
+          const nextOutBlock = this.findNextBlockInLocation(startBlock)
+          if (nextOutBlock) {
+            const key = nextOutBlock.key
+            this.cursor = {
+              start: { key, offset: 0 },
+              end: { key, offset: 0 },
+              isEdit: true
+            }
+            return this.partialRender()
           }
-          this.partialRender()
+          return
         }
-        return
       }
     }
+
     // Only handle h1~h6 span block
     const { type, text, key } = startBlock
     if (/span/.test(type) && start.offset === 0 && text[1] === '\n') {

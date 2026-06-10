@@ -97,6 +97,10 @@ div.ag-show-quick-insert-hint
   word-break: break-word;
 }
 
+.ag-code-content {
+  display: block;
+}
+
 .ag-code-content::-webkit-scrollbar {
   /* Show scroll bars to deal with unwrapped lines in code blocks,
        regardless of the preference for hiding scroll bars
