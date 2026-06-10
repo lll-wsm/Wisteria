@@ -175,16 +175,39 @@ const backspaceCtrl = (ContentState) => {
         if (start.offset === 0) {
           event.preventDefault()
           event.stopPropagation()
-          const prevBlock = this.findPreBlockInLocation(startBlock)
-          if (prevBlock) {
-            const key = prevBlock.key
-            const offset = prevBlock.text.length
-            this.cursor = {
-              start: { key, offset },
-              end: { key, offset },
-              isEdit: true
+          // Find the pre block (topFence's direct parent is the pre block)
+          const preBlock = this.getParent(startBlock)
+          const prevOuterBlock = this.getPreSibling(preBlock)
+          if (prevOuterBlock) {
+            // Check if the previous block is an empty paragraph that can be deleted
+            if (prevOuterBlock.type === 'p') {
+              const paragraphContent = prevOuterBlock.children && prevOuterBlock.children[0]
+              const prevText = paragraphContent ? paragraphContent.text : ''
+              if (prevText === '' || prevText.trim() === '') {
+                // Delete the empty paragraph, code block moves up
+                this.removeBlock(prevOuterBlock)
+                const key = startBlock.key
+                const offset = 0
+                this.cursor = {
+                  start: { key, offset },
+                  end: { key, offset },
+                  isEdit: true
+                }
+                return this.render()
+              }
             }
-            return this.partialRender()
+            // Previous block has content, move cursor to end of previous editable block
+            const prevEditableBlock = this.findPreBlockInLocation(startBlock)
+            if (prevEditableBlock) {
+              const key = prevEditableBlock.key
+              const offset = prevEditableBlock.text.length
+              this.cursor = {
+                start: { key, offset },
+                end: { key, offset },
+                isEdit: true
+              }
+              return this.partialRender()
+            }
           }
           return
         }

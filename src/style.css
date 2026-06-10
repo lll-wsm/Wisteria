@@ -217,9 +217,16 @@ pre.ag-multiple-math {
 
 /* Code Blocks Style to prevent cursor height stretching */
 pre.ag-fence-code,
+pre.ag-fence-code *,
 pre.ag-indent-code,
+pre.ag-indent-code *,
+.ag-code-content,
+.ag-code-content * {
+  line-height: 1.1 !important;
+}
+
 .ag-code-content {
-  line-height: 1.5 !important;
+  display: block !important;
 }
 
 /* Floating Menu Style */
