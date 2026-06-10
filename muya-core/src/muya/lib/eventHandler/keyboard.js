@@ -139,6 +139,25 @@ class Keyboard {
         container.classList.add('ag-meta-or-ctrl')
       }
 
+      // Intercept Cmd/Ctrl+Z and Cmd/Ctrl+Y for undo/redo
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+        event.stopPropagation()
+        if (event.shiftKey) {
+          this.muya.redo()
+        } else {
+          this.muya.undo()
+        }
+        return
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'y') {
+        event.preventDefault()
+        event.stopPropagation()
+        this.muya.redo()
+        return
+      }
+
       // Intercept Cmd/Ctrl+A to use Muya's own selectAll, bypassing the
       // browser's native selectAll which fails when the last element in the
       // editable area is contenteditable="false" (e.g. a mermaid preview div).
@@ -240,7 +259,20 @@ class Keyboard {
       }
     }
 
+    const beforeInputHandler = (event) => {
+      if (event.inputType === 'historyUndo') {
+        event.preventDefault()
+        event.stopPropagation()
+        this.muya.undo()
+      } else if (event.inputType === 'historyRedo') {
+        event.preventDefault()
+        event.stopPropagation()
+        this.muya.redo()
+      }
+    }
+
     eventCenter.attachDOMEvent(container, 'input', inputHandler)
+    eventCenter.attachDOMEvent(container, 'beforeinput', beforeInputHandler)
   }
 
   keyupBinding() {

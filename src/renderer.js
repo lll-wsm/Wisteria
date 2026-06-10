@@ -361,6 +361,15 @@ let activeFolderPath = null
 let activeFilePath = null
 const expandedPaths = new Set()
 
+async function refreshFolderTree() {
+  if (activeFolderPath) {
+    const treeResult = await tauriAPI.getFolderTree(activeFolderPath)
+    if (treeResult.success) {
+      renderTree(treeResult.tree)
+    }
+  }
+}
+
 function getDirname(p) {
   return p.substring(0, p.lastIndexOf('/'))
 }
@@ -1942,12 +1951,17 @@ function showInlineInputForCreate(parentDir, isDir) {
 
     if (isDir) {
       const result = await tauriAPI.createFolder(parentDir, name)
-      if (!result.success) {
+      if (result.success) {
+        expandedPaths.add(parentDir)
+        await refreshFolderTree()
+      } else {
         alert(result.error || 'Failed to create folder')
       }
     } else {
       const result = await tauriAPI.createFile(parentDir, name)
       if (result.success && result.path) {
+        expandedPaths.add(parentDir)
+        await refreshFolderTree()
         await selectFile(result.path)
       } else if (!result.success) {
         alert(result.error || 'Failed to create file')
@@ -2041,6 +2055,7 @@ function showInlineInputForRename(targetPath, isDir) {
         activeFilePath = newPath
         updateDirname(newPath)
       }
+      await refreshFolderTree()
     } else {
       alert(result.error || 'Failed to rename')
     }
@@ -2105,11 +2120,13 @@ sidebarContextMenu.addEventListener('click', async (e) => {
       if (confirm(`Are you sure you want to move "${name}" to Trash?`)) {
         const result = await tauriAPI.trashPath(contextMenuTargetPath)
         if (result.success) {
+          expandedPaths.delete(contextMenuTargetPath)
           if (activeFilePath === contextMenuTargetPath) {
             activeFilePath = null
             muya.markdown = ''
             muya.setMarkdown('')
           }
+          await refreshFolderTree()
         } else {
           alert(result.error || 'Failed to delete')
         }
