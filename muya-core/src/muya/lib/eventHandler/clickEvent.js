@@ -209,7 +209,7 @@ class ClickEvent {
       }
 
       // Handle image click, to select the current image
-      if (target.tagName === 'IMG' && imageWrapper) {
+      if (imageWrapper && (target.tagName === 'IMG' || target.closest('.ag-image-container'))) {
         // Handle select image
         const imageInfo = getImageInfo(imageWrapper)
         event.preventDefault()
@@ -228,12 +228,6 @@ class ClickEvent {
           imageInfo
         })
         contentState.selectImage(imageInfo)
-        contentState.cursor = {
-          start: { key: imageInfo.key, offset: imageInfo.token.range.start + 2 },
-          end: { key: imageInfo.key, offset: imageInfo.token.range.start + 2 },
-          isEdit: true
-        }
-        contentState.singleRender(contentState.getBlock(imageInfo.key))
         // Handle show image transformer
         const imageSelector =
           imageInfo.imageId.indexOf('_') > -1
@@ -245,18 +239,6 @@ class ClickEvent {
         eventCenter.dispatch('muya-transformer', {
           reference: imageContainer,
           imageInfo
-        })
-        // Show image source editor (ImageSelector)
-        eventCenter.dispatch('muya-image-selector', {
-          reference: {
-            getBoundingClientRect() {
-              const r = imageWrapper.getBoundingClientRect()
-              r.height = 0
-              return r
-            }
-          },
-          imageInfo,
-          cb: () => {}
         })
         return
       }

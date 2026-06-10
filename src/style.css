@@ -386,7 +386,7 @@ li.ag-task-list-item > input.ag-checkbox-checked ~ p.ag-paragraph {
 #sidebar-tree {
   flex-grow: 1;
   overflow-y: auto;
-  padding: 10px 0;
+  padding: 16px 0 10px 0;
 }
 
 #sidebar-tree::-webkit-scrollbar {

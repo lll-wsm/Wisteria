@@ -687,7 +687,7 @@ pre.ag-fence-code > code::before {
 }
 
 pre.ag-active.ag-fence-code > code::before {
-  content: var(--i18n-fence, 'fence');
+  content: none;
 }
 
 pre.ag-active.ag-indent-code > code::before {
@@ -989,6 +989,14 @@ span.ag-warn.ag-emoji-marked-text {
   position: relative;
   background: var(--codeBlockBgColor);
   border-radius: 2px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Prevent purple ::selection highlight on image elements and their children */
+.ag-inline-image::selection,
+.ag-inline-image *::selection {
+  background: transparent;
 }
 
 .ag-inline-image.left,
@@ -1329,11 +1337,14 @@ span.ag-reference-link {
   cursor: pointer;
   opacity: 0;
   z-index: 1;
-  transition: opacity 0.2s ease-in-out;
+  transition: opacity 0.2s ease-in-out, top 0.2s ease-in-out;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .ag-active .ag-code-copy {
   opacity: 0.5;
+  top: -22px;
 }
 
 pre:not(.ag-active):hover .ag-code-copy {

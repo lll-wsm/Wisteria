@@ -166,6 +166,12 @@ const codeBlockCtrl = (ContentState) => {
     const codeBlock = preBlock.children.find((c) => c.type === 'code')
     const codeContent = codeBlock.children[0].text
     this.muya.clipboard.copy('copyCodeContent', codeContent)
+
+    // Clear any selection to prevent browser from highlighting the code block with a purple background
+    const selection = window.getSelection()
+    if (selection) {
+      selection.removeAllRanges()
+    }
   }
 
   ContentState.prototype.resizeLineNumber = function() {

@@ -104,6 +104,17 @@ class MouseEvent {
         return
       }
 
+      // Prevent default mousedown on any element inside an inline image wrapper
+      // to prevent browser selection (purple highlight). This covers <img>, .ag-image-container,
+      // icons, and any other children within .ag-inline-image.
+      if (
+        event.button === 0 &&
+        target.closest('.ag-inline-image')
+      ) {
+        event.preventDefault()
+        return
+      }
+
       if (target.classList && target.classList.contains('ag-drag-handler')) {
         contentState.handleMouseDown(event)
       } else if (target && target.closest('tr')) {
