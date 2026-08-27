@@ -1,15 +1,44 @@
 {
   "name": "wisteria-editor",
   "version": "0.1.0",
+  "description": "Wisteria Markdown Editor",
+  "author": "Wisteria",
   "main": "main.js",
   "scripts": {
     "dev": "node start-dev.js",
     "vite": "vite",
     "build": "vite build",
-    "start": "electron ."
+    "start": "electron .",
+    "pack": "npm run build && electron-builder --dir && codesign --force --deep --sign - release/mac-arm64/Wisteria.app",
+    "dist": "npm run build && electron-builder --dir && codesign --force --deep --sign - release/mac-arm64/Wisteria.app && electron-builder --mac dmg zip --prepackaged release/mac-arm64/Wisteria.app"
+  },
+    "build": {
+    "appId": "com.wisteria.editor",
+    "productName": "Wisteria",
+    "electronDist": "node_modules/electron/dist",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "dist/**/*",
+      "package.json",
+      "!node_modules/**/*"
+    ],
+    "mac": {
+      "icon": "icons/wisteria.icns",
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    }
   },
   "devDependencies": {
     "electron": "^30.0.0",
+    "electron-builder": "^26.15.3",
     "path-browserify": "^1.0.1",
     "vite": "^5.0.0"
   },
