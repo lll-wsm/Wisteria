@@ -10,15 +10,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Specific path file operations (for sidebar workspace)
   openFileWithPath: (filePath) => ipcRenderer.invoke('open-file-with-path', filePath),
   saveFileWithPath: (filePath, content) => ipcRenderer.invoke('save-file-with-path', filePath, content),
+  reopenWithEncoding: (filePath, encoding) => ipcRenderer.invoke('reopen-with-encoding', filePath, encoding),
   
   // Folder tree operations
   openFolder: () => ipcRenderer.invoke('open-folder'),
+  openFolderByPath: (dirPath) => ipcRenderer.invoke('open-folder-by-path', dirPath),
   getFolderTree: (dirPath) => ipcRenderer.invoke('get-folder-tree', dirPath),
   watchFolder: (dirPath) => ipcRenderer.invoke('watch-folder', dirPath),
   createFile: (parentPath, name) => ipcRenderer.invoke('create-file', parentPath, name),
   createFolder: (parentPath, name) => ipcRenderer.invoke('create-folder', parentPath, name),
   renamePath: (oldPath, newPath) => ipcRenderer.invoke('rename-path', oldPath, newPath),
   trashPath: (filePath) => ipcRenderer.invoke('trash-path', filePath),
+
+  // Settings
+  getLanguage: () => ipcRenderer.invoke('get-language'),
   
   // Asset Ops
   saveAsset: (buffer, extension) => ipcRenderer.invoke('save-asset', buffer, extension),
@@ -36,5 +41,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onMenuHtml: (callback) => ipcRenderer.on('menu-html', () => callback()),
   onMenuFind: (callback) => ipcRenderer.on('menu-find', () => callback()),
   onMenuReplace: (callback) => ipcRenderer.on('menu-replace', () => callback()),
+  onMenuOpenRecent: (callback) => ipcRenderer.on('menu-open-recent', (event, filePath) => callback(filePath)),
+  onMenuOpenRecentFolder: (callback) => ipcRenderer.on('menu-open-recent-folder', (event, dirPath) => callback(dirPath)),
+  onMenuReopenEncoding: (callback) => ipcRenderer.on('menu-reopen-encoding', (event, encoding) => callback(encoding)),
+  onLanguageChanged: (callback) => ipcRenderer.on('language-changed', (event, lang) => callback(lang)),
   onFolderUpdate: (callback) => ipcRenderer.on('folder-update', (event, tree) => callback(tree))
 })

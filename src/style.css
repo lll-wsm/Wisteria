@@ -121,7 +121,7 @@ body {
    Muya's editing area (content wrapper)
 */
 #ag-editor-id {
-  padding: 120px 10% !important; /* Increased padding for more breathing room */
+  padding: 24px 10% 120px !important; /* 顶部留白缩小，底部保留滚动安全区 */
   max-width: var(--content-max-width) !important;
   margin: 0 auto !important;
   min-height: 100vh;
@@ -573,6 +573,22 @@ body.sidebar-open #ag-editor-id {
   pointer-events: all;
 }
 
+.context-menu .menu-item.active {
+  background-color: var(--editorColor10);
+  color: var(--accent-color);
+}
+
+/* Encoding indicator in status bar */
+#status-encoding {
+  margin-left: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+#status-encoding:hover {
+  opacity: 1 !important;
+}
+
 .tree-input-inline {
   background-color: var(--editorColor04);
   border: 1px solid var(--accent-color);
@@ -744,4 +760,3 @@ body.sidebar-open #ag-editor-id {
   border-color: var(--deleteColor) !important;
   box-shadow: 0 0 0 2px rgba(255, 82, 82, 0.2) !important;
 }
-

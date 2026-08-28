@@ -1,0 +1,12 @@
+[
+  { "value": "utf-8", "label": "UTF-8" },
+  { "value": "gb18030", "label": "GBK / GB18030" },
+  { "value": "big5", "label": "Big5" },
+  { "value": "utf-16le", "label": "UTF-16 LE" },
+  { "value": "utf-16be", "label": "UTF-16 BE" },
+  { "value": "shiftjis", "label": "Shift_JIS" },
+  { "value": "euc-jp", "label": "EUC-JP" },
+  { "value": "euc-kr", "label": "EUC-KR" },
+  { "value": "cp1252", "label": "Windows-1252" },
+  { "value": "latin1", "label": "ISO-8859-1" }
+]

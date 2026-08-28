@@ -1,5 +1,8 @@
 import Muya from 'muya-core'
 import 'muya-core/src/muya/lib/assets/styles/index.css'
+import enUS from '../locales/en-US.json'
+import zhCN from '../locales/zh-CN.json'
+import ENCODINGS from '../shared/encodings.json'
 
 const container = document.querySelector('#editor')
 const muya = new Muya(container, {
@@ -7,6 +10,53 @@ const muya = new Muya(container, {
 })
 
 console.log('Muya initialized:', muya)
+
+// ===================== i18n (renderer) =====================
+let currentLang = 'en-US'
+const dicts = { 'en-US': enUS, 'zh-CN': zhCN }
+
+function t(key, vars) {
+  let str = (dicts[currentLang] && dicts[currentLang][key]) || dicts['en-US'][key] || key
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) {
+      str = str.replace(`{${k}}`, v)
+    }
+  }
+  return str
+}
+
+function applyI18n() {
+  document.title = t('app.name')
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    const key = el.dataset.i18n
+    if (!key) return
+    const value = t(key)
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+    const textNodes = []
+    let node
+    while ((node = walker.nextNode())) textNodes.push(node)
+    if (textNodes.length > 0) {
+      textNodes[textNodes.length - 1].nodeValue = value
+    } else {
+      el.textContent = value
+    }
+  })
+  document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+    el.placeholder = t(el.dataset.i18nPlaceholder)
+  })
+  document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+    el.title = t(el.dataset.i18nTitle)
+  })
+}
+
+// ===================== Dirty tracking =====================
+let isDirty = false
+let lastSavedMarkdown = null
+
+function markSaved(content) {
+  lastSavedMarkdown = content
+  isDirty = false
+}
 
 // Sidebar workspace states
 let activeFolderPath = null
@@ -25,7 +75,7 @@ async function handleImageFile(file) {
   if (result.success) {
     muya.contentState.insertImage({ src: result.path })
   } else {
-    alert(result.error || 'Failed to save image')
+    alert(result.error || t('alert.saveImageFailed'))
   }
 }
 
@@ -102,6 +152,8 @@ window.electronAPI.onMenuNew(async () => {
   activeFilePath = null
   muya.markdown = '# New Document\n\n'
   muya.setMarkdown('# New Document\n\n')
+  markSaved(muya.markdown)
+  updateEncodingIndicator(null)
   updateActiveFileHighlight()
 })
 
@@ -118,17 +170,25 @@ window.electronAPI.onMenuOpen(async () => {
     activeFilePath = result.path
     muya.markdown = result.content
     muya.setMarkdown(result.content)
+    markSaved(result.content)
+    updateEncodingIndicator(result.encoding)
     updateActiveFileHighlight()
   }
 })
 
 window.electronAPI.onMenuSave(async () => {
   if (activeFilePath) {
-    await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
+    const result = await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
+    if (result.success) {
+      markSaved(muya.markdown)
+      updateEncodingIndicator(result.encoding)
+    }
   } else {
     const result = await window.electronAPI.saveFile(muya.markdown)
     if (result.success && result.path) {
       activeFilePath = result.path
+      markSaved(muya.markdown)
+      updateEncodingIndicator(result.encoding)
       updateActiveFileHighlight()
     }
   }
@@ -138,6 +198,8 @@ window.electronAPI.onMenuSaveAs(async () => {
   const result = await window.electronAPI.saveFileAs(muya.markdown)
   if (result.success && result.path) {
     activeFilePath = result.path
+    markSaved(muya.markdown)
+    updateEncodingIndicator(result.encoding)
     updateActiveFileHighlight()
   }
 })
@@ -238,11 +300,17 @@ document.querySelector('#floating-menu').addEventListener('click', async (e) => 
       break
     case 'menu-save':
       if (activeFilePath) {
-        await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
+        const saveResult = await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
+        if (saveResult.success) {
+          markSaved(muya.markdown)
+          updateEncodingIndicator(saveResult.encoding)
+        }
       } else {
         const result = await window.electronAPI.saveFile(muya.markdown)
         if (result.success && result.path) {
           activeFilePath = result.path
+          markSaved(muya.markdown)
+          updateEncodingIndicator(result.encoding)
           updateActiveFileHighlight()
         }
       }
@@ -251,6 +319,8 @@ document.querySelector('#floating-menu').addEventListener('click', async (e) => 
       const result = await window.electronAPI.saveFileAs(muya.markdown)
       if (result.success && result.path) {
         activeFilePath = result.path
+        markSaved(muya.markdown)
+        updateEncodingIndicator(result.encoding)
         updateActiveFileHighlight()
       }
       break
@@ -273,12 +343,13 @@ const charCountDisplay = document.querySelector('#status-char-count')
 
 function updateStatusBar(wordCount) {
   if (!wordCountDisplay || !charCountDisplay) return
-  wordCountDisplay.innerText = `${wordCount.word} words`
-  charCountDisplay.innerText = `${wordCount.character} characters`
+  wordCountDisplay.innerText = t('status.words', { count: wordCount.word })
+  charCountDisplay.innerText = t('status.characters', { count: wordCount.character })
 }
 
 muya.on('change', (payload) => {
   updateStatusBar(payload.wordCount)
+  isDirty = muya.markdown !== lastSavedMarkdown
   if (typeof findReplacePanel !== 'undefined' && findReplacePanel && !findReplacePanel.classList.contains('hidden')) {
     performSearch(true)
   }
@@ -339,7 +410,7 @@ function performSearch(keepIndex = false) {
       isWholeWord: false,
       isRegexp: false
     })
-    findCount.innerText = 'No results'
+    findCount.innerText = t('find.noResults')
     findCount.classList.remove('has-results')
     currentMatches = []
     currentMatchIndex = -1
@@ -357,7 +428,7 @@ function performSearch(keepIndex = false) {
       findInput.parentElement.classList.remove('invalid-regex')
     } catch (e) {
       findInput.parentElement.classList.add('invalid-regex')
-      findCount.innerText = 'Invalid RegExp'
+      findCount.innerText = t('find.invalidRegex')
       findCount.classList.add('has-results')
       return
     }
@@ -385,10 +456,13 @@ function performSearch(keepIndex = false) {
 // Update matches count display
 function updateCountDisplay() {
   if (currentMatches.length === 0) {
-    findCount.innerText = 'No results'
+    findCount.innerText = t('find.noResults')
     findCount.classList.remove('has-results')
   } else {
-    findCount.innerText = `${currentMatchIndex + 1} of ${currentMatches.length}`
+    findCount.innerText = t('find.count', {
+      current: currentMatchIndex + 1,
+      total: currentMatches.length
+    })
     findCount.classList.add('has-results')
   }
 }
@@ -698,9 +772,11 @@ async function selectFile(filePath) {
     activeFilePath = filePath
     muya.markdown = result.content
     muya.setMarkdown(result.content)
+    markSaved(result.content)
+    updateEncodingIndicator(result.encoding)
     updateActiveFileHighlight()
   } else {
-    alert(`Failed to open file: ${result.error || ''}`)
+    alert(t('alert.openFailed', { error: result.error || '' }))
   }
 }
 
@@ -766,8 +842,8 @@ function renderTree(tree) {
   if (!tree) {
     sidebarTreeContainer.innerHTML = `
       <div class="empty-state">
-        <p>No workspace folder open.</p>
-        <button id="sidebar-open-folder-cta">Open Folder</button>
+        <p data-i18n="sidebar.emptyFolder">${t('sidebar.emptyFolder')}</p>
+        <button id="sidebar-open-folder-cta" data-i18n="sidebar.openFolder">${t('sidebar.openFolder')}</button>
       </div>
     `
     const cta = document.querySelector('#sidebar-open-folder-cta')
@@ -798,7 +874,7 @@ function renderTree(tree) {
     li.style.padding = '10px 20px'
     li.style.opacity = '0.5'
     li.style.fontSize = '12px'
-    li.innerText = 'Empty directory'
+    li.innerText = t('tree.emptyDirectory')
     ul.appendChild(li)
   }
   sidebarTreeContainer.appendChild(ul)
@@ -863,7 +939,7 @@ function createTreeNodeDOM(node) {
       emptyDiv.style.padding = '4px 28px'
       emptyDiv.style.opacity = '0.4'
       emptyDiv.style.fontSize = '11px'
-      emptyDiv.innerText = 'Empty'
+      emptyDiv.innerText = t('tree.empty')
       childrenDiv.appendChild(emptyDiv)
     }
     li.appendChild(childrenDiv)
@@ -1100,7 +1176,7 @@ function showInlineInputForCreate(parentDir, isDir) {
   const input = document.createElement('input')
   input.type = 'text'
   input.className = 'tree-input-inline'
-  input.placeholder = isDir ? 'Folder Name' : 'File Name (.md)'
+  input.placeholder = isDir ? t('input.folderName') : t('input.fileName')
   itemDiv.appendChild(input)
   tempLi.appendChild(itemDiv)
 
@@ -1145,14 +1221,14 @@ function showInlineInputForCreate(parentDir, isDir) {
     if (isDir) {
       const result = await window.electronAPI.createFolder(parentDir, name)
       if (!result.success) {
-        alert(result.error || 'Failed to create folder')
+        alert(result.error || t('alert.createFolderFailed'))
       }
     } else {
       const result = await window.electronAPI.createFile(parentDir, name)
       if (result.success && result.path) {
         await selectFile(result.path)
       } else if (!result.success) {
-        alert(result.error || 'Failed to create file')
+        alert(result.error || t('alert.createFileFailed'))
       }
     }
 
@@ -1165,7 +1241,7 @@ function showInlineInputForCreate(parentDir, isDir) {
       tempLi.parentNode.removeChild(tempLi)
     }
     if (ul.children.length === 0) {
-      ul.innerHTML = '<li style="padding: 10px 20px; opacity: 0.5; font-size: 12px;">Empty directory</li>'
+      ul.innerHTML = `<li style="padding: 10px 20px; opacity: 0.5; font-size: 12px;">${t('tree.emptyDirectory')}</li>`
     }
   }
 
@@ -1243,7 +1319,7 @@ function showInlineInputForRename(targetPath, isDir) {
         activeFilePath = newPath
       }
     } else {
-      alert(result.error || 'Failed to rename')
+      alert(result.error || t('alert.renameFailed'))
     }
 
     cleanup()
@@ -1303,7 +1379,7 @@ sidebarContextMenu.addEventListener('click', async (e) => {
     }
     case 'ctx-delete': {
       const name = contextMenuTargetPath.substring(contextMenuTargetPath.lastIndexOf('/') + 1)
-      if (confirm(`Are you sure you want to move "${name}" to Trash?`)) {
+      if (confirm(t('confirm.trash', { name }))) {
         const result = await window.electronAPI.trashPath(contextMenuTargetPath)
         if (result.success) {
           if (activeFilePath === contextMenuTargetPath) {
@@ -1312,7 +1388,7 @@ sidebarContextMenu.addEventListener('click', async (e) => {
             muya.setMarkdown('')
           }
         } else {
-          alert(result.error || 'Failed to delete')
+          alert(result.error || t('alert.deleteFailed'))
         }
       }
       break
@@ -1320,5 +1396,144 @@ sidebarContextMenu.addEventListener('click', async (e) => {
   }
 })
 
-// Initialize empty workspace tree sidebar states on startup
+// ==========================================
+// Encoding Indicator & Popup
+// ==========================================
+
+const encodingIndicator = document.querySelector('#status-encoding')
+const encodingMenu = document.querySelector('#encoding-menu')
+let currentFileEncoding = null
+
+function labelForEncoding(value) {
+  const found = ENCODINGS.find((e) => e.value === value)
+  return found ? found.label : value
+}
+
+function updateEncodingIndicator(encoding) {
+  currentFileEncoding = encoding || null
+  if (!encodingIndicator) return
+  if (encoding) {
+    encodingIndicator.style.display = ''
+    encodingIndicator.textContent = `${labelForEncoding(encoding)} ▾`
+  } else {
+    encodingIndicator.style.display = 'none'
+    encodingMenu.classList.remove('show')
+  }
+}
+
+function buildEncodingMenuItems() {
+  encodingMenu.innerHTML = ''
+  ENCODINGS.forEach((e) => {
+    const item = document.createElement('div')
+    item.className = 'menu-item'
+    item.dataset.encoding = e.value
+    item.textContent = e.label
+    if (currentFileEncoding === e.value) item.classList.add('active')
+    item.addEventListener('click', () => {
+      encodingMenu.classList.remove('show')
+      handleReopenEncoding(e.value)
+    })
+    encodingMenu.appendChild(item)
+  })
+}
+
+function showEncodingMenu() {
+  if (!currentFileEncoding) return
+  buildEncodingMenuItems()
+  const rect = encodingIndicator.getBoundingClientRect()
+  encodingMenu.style.left = `${Math.max(8, rect.left - 100)}px`
+  encodingMenu.style.top = `${Math.max(8, rect.top - encodingMenu.offsetHeight - 8)}px`
+  encodingMenu.classList.add('show')
+}
+
+if (encodingIndicator) {
+  encodingIndicator.addEventListener('click', (e) => {
+    e.stopPropagation()
+    showEncodingMenu()
+  })
+}
+
+window.addEventListener('click', () => {
+  encodingMenu.classList.remove('show')
+})
+
+async function handleReopenEncoding(encoding) {
+  if (!activeFilePath || encoding === currentFileEncoding) return
+  if (isDirty && !window.confirm(t('confirm.reopenEncoding'))) return
+
+  const result = await window.electronAPI.reopenWithEncoding(activeFilePath, encoding)
+  if (result.success) {
+    activeFilePath = result.path
+    muya.markdown = result.content
+    muya.setMarkdown(result.content)
+    markSaved(result.content)
+    updateEncodingIndicator(result.encoding)
+    updateActiveFileHighlight()
+  } else {
+    alert(t('alert.openFailed', { error: result.error || '' }))
+  }
+}
+
+async function openFolderByPath(dirPath) {
+  if (activeFilePath) {
+    try {
+      await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const result = await window.electronAPI.openFolderByPath(dirPath)
+  if (result.success && result.path) {
+    activeFolderPath = result.path
+    expandedPaths.add(activeFolderPath)
+    if (result.tree) renderTree(result.tree)
+    sidebar.classList.remove('collapsed')
+    document.body.classList.add('sidebar-open')
+  } else {
+    alert(t('alert.openFailed', { error: result.error || '' }))
+  }
+}
+
+// ==========================================
+// New Menu / Language IPC Listeners
+// ==========================================
+
+window.electronAPI.onMenuOpenRecent((filePath) => {
+  selectFile(filePath)
+})
+
+window.electronAPI.onMenuOpenRecentFolder((dirPath) => {
+  openFolderByPath(dirPath)
+})
+
+window.electronAPI.onMenuReopenEncoding((encoding) => {
+  handleReopenEncoding(encoding)
+})
+
+window.electronAPI.onLanguageChanged((lang) => {
+  currentLang = lang
+  applyI18n()
+  updateStatusBar(muya.getWordCount(muya.markdown))
+  if (typeof findReplacePanel !== 'undefined' && findReplacePanel && !findReplacePanel.classList.contains('hidden')) {
+    updateCountDisplay()
+  }
+})
+
+// ==========================================
+// Initialize
+// ==========================================
+
 renderTree(null)
+
+;(async function initApp() {
+  try {
+    const lang = await window.electronAPI.getLanguage()
+    if (lang) currentLang = lang
+  } catch (e) {
+    console.error('Failed to load language:', e)
+  }
+  applyI18n()
+  updateStatusBar(muya.getWordCount(muya.markdown))
+  markSaved(muya.markdown)
+})()

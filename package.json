@@ -12,7 +12,7 @@
     "pack": "npm run build && electron-builder --dir && codesign --force --deep --sign - release/mac-arm64/Wisteria.app",
     "dist": "npm run build && electron-builder --dir && codesign --force --deep --sign - release/mac-arm64/Wisteria.app && electron-builder --mac dmg zip --prepackaged release/mac-arm64/Wisteria.app"
   },
-    "build": {
+  "build": {
     "appId": "com.wisteria.editor",
     "productName": "Wisteria",
     "electronDist": "node_modules/electron/dist",
@@ -23,8 +23,13 @@
       "main.js",
       "preload.js",
       "dist/**/*",
+      "locales/**/*",
+      "shared/**/*",
       "package.json",
-      "!node_modules/**/*"
+      "!node_modules/**/*",
+      "node_modules/iconv-lite/**/*",
+      "node_modules/jschardet/**/*",
+      "node_modules/safer-buffer/**/*"
     ],
     "mac": {
       "icon": "icons/wisteria.icns",
@@ -43,6 +48,8 @@
     "vite": "^5.0.0"
   },
   "dependencies": {
+    "iconv-lite": "^0.7.3",
+    "jschardet": "^3.1.4",
     "muya-core": "file:./muya-core"
   }
 }
