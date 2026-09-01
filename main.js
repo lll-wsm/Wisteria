@@ -524,6 +524,15 @@ function createWindow() {
     mainWindow = null
   })
 
+  // Deliver a file that arrived via macOS open-file event once the page is ready.
+  win.webContents.on('did-finish-load', () => {
+    if (pendingOpenFilePath && !win.isDestroyed()) {
+      const p = pendingOpenFilePath
+      pendingOpenFilePath = null
+      openDeliveredFile(p)
+    }
+  })
+
   // Pipe renderer console logs to terminal
   win.webContents.on('console-message', (event, level, message, line, sourceId) => {
     console.log(`[Renderer] ${message}`)
@@ -571,7 +580,35 @@ app.whenReady().then(() => {
   loadHistory()
   buildMenu()
   createWindow()
+  // If a file was delivered before the window existed, did-finish-load delivers
+  // it as soon as the page is ready.
 })
+
+// macOS: file opened via Finder / "Open With" / drag onto the app icon.
+let pendingOpenFilePath = null
+
+// The open-file event can fire before app.whenReady(); buffer the path so it
+// is delivered once the window has loaded.
+app.on('open-file', (event, filePath) => {
+  event.preventDefault()
+  pendingOpenFilePath = filePath
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents.isLoading() === false) {
+    openDeliveredFile(filePath)
+  }
+})
+
+function openDeliveredFile(filePath) {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  // Wait a tick so the renderer's menu listeners are registered before we send.
+  setTimeout(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    // The renderer opens the file through the same recent-file flow.
+    mainWindow.webContents.send('menu-open-recent', filePath)
+    currentFilePath = filePath
+    addFileHistory(filePath)
+    buildMenu()
+  }, 300)
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

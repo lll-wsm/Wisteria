@@ -38,6 +38,23 @@
       "target": [
         "dmg",
         "zip"
+      ],
+      "fileAssociations": [
+        {
+          "ext": "md",
+          "role": "Editor",
+          "name": "Markdown Document"
+        },
+        {
+          "ext": "markdown",
+          "role": "Editor",
+          "name": "Markdown Document"
+        },
+        {
+          "ext": "txt",
+          "role": "Editor",
+          "name": "Text Document"
+        }
       ]
     }
   },
