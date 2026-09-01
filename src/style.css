@@ -26,6 +26,8 @@
   --editorColor04: rgba(44, 62, 80, 0.04);
   --tableBorderColor: rgba(44, 62, 80, 0.25);
   --iconColor: rgba(44, 62, 80, 0.6);
+  --code-bg: #f6f8fa;
+  --code-border: rgba(44, 62, 80, 0.15);
 }
 
 body.theme-dark {
@@ -51,6 +53,8 @@ body.theme-dark {
   --editorColor04: rgba(224, 224, 224, 0.04);
   --tableBorderColor: rgba(224, 224, 224, 0.28);
   --iconColor: rgba(224, 224, 224, 0.6);
+  --code-bg: #1f2428;
+  --code-border: rgba(224, 224, 224, 0.18);
 }
 
 body {
@@ -524,6 +528,28 @@ body.theme-dark #ag-editor-id figure.ag-container-block svg [stroke='#000000'] {
   max-width: 100%;
 }
 
+/* Code block background + border (active editing state). Uses theme
+   variables so it follows light/dark and file themes. */
+#ag-editor-id pre.ag-active.ag-fence-code,
+#ag-editor-id pre.ag-active.ag-indent-code,
+#ag-editor-id pre.ag-active.ag-mermaid,
+#ag-editor-id pre.ag-active.ag-front-matter,
+#ag-editor-id pre.ag-active.ag-html-block {
+  background-color: var(--code-bg, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--code-border, rgba(0, 0, 0, 0.15));
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+}
+
+/* Non-active (preview) code blocks keep a lighter background so they read
+   as code even before the cursor enters. */
+#ag-editor-id pre.ag-fence-code,
+#ag-editor-id pre.ag-indent-code {
+  background-color: var(--code-bg, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--code-border, rgba(0, 0, 0, 0.15));
+  border-radius: 6px;
+}
+
 #ag-editor-id pre .ag-code-content {
   display: block;
   white-space: pre;
@@ -754,7 +780,7 @@ body.theme-dark {
   color: var(--text-color) !important;
 }
 
-.theme-dark .ag-active {
+.theme-dark .ag-active:not(pre) {
   background-color: rgba(187, 134, 252, 0.2) !important;
   transition: background-color 0.4s ease;
 }

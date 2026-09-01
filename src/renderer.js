@@ -461,6 +461,8 @@ body.theme-file-theme, body.theme-file-theme #ag-editor-id {
   --selectionColor: ${toRgba(c.primary || '#7c4dff', 0.25)};
   --editorBgColor: ${c.bg || '#ffffff'};
   --iconColor: ${toRgba(fontBase, 0.6)};
+  --code-bg: ${c.codeBg || toRgba(c.bg ? c.bg : '#ffffff', 0.04)};
+  --code-border: ${toRgba(fontBase, 0.15)};
 }
 body.theme-file-theme {
   background-color: ${c.bg || '#ffffff'};
