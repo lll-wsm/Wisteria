@@ -781,11 +781,6 @@ body.theme-dark {
   color: var(--text-color) !important;
 }
 
-.theme-dark .ag-active:not(pre) {
-  background-color: rgba(187, 134, 252, 0.2) !important;
-  transition: background-color 0.4s ease;
-}
-
 /* Math Error State Styling */
 .ag-math-error {
   color: var(--deleteColor) !important;
