@@ -486,11 +486,9 @@ body.theme-dark #ag-editor-id figure.ag-container-block svg [stroke='#000000'] {
   filter: none;
 }
 
-/* Remove the fence markers shown around an active fenced code block
-   (``` top-left/bottom-left and the "fence" label bottom-right):
-   on short/empty blocks the label overlaps the copy button. */
-#ag-editor-id pre.ag-active.ag-fence-code::before,
-#ag-editor-id pre.ag-active.ag-fence-code::after,
+/* Remove only the bottom-right "fence" text label of an active fenced
+   code block: on short/empty blocks it overlaps the copy button.
+   The ``` markers (top-left / bottom-left) are kept. */
 #ag-editor-id pre.ag-active.ag-fence-code > code::before {
   content: none !important;
 }
