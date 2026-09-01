@@ -152,9 +152,16 @@ function setLanguage(lang) {
   sendToRenderer('language-changed', lang)
 }
 
-// ===================== History =====================
-const MAX_HISTORY = 20
-let history = []
+// ===================== History (v2: files / folders groups) =====================
+// history.json v2 layout:
+// {
+//   "version": 2,
+//   "files":   [{ path, time }, ...],        // individually-opened files only
+//   "folders": [{ path, time, state }, ...]  // state: last file + scroll/cursor + expanded dirs
+// }
+const MAX_FILE_HISTORY = 10
+const MAX_FOLDER_HISTORY = 10
+let history = { version: 2, files: [], folders: [] }
 
 function historyFilePath() {
   return path.join(app.getPath('userData'), 'history.json')
@@ -163,9 +170,24 @@ function historyFilePath() {
 function loadHistory() {
   try {
     const raw = JSON.parse(fs.readFileSync(historyFilePath(), 'utf8'))
-    history = Array.isArray(raw) ? raw : []
+    if (Array.isArray(raw)) {
+      // v1 flat array [{type:'file'|'folder', path, time}] -> migrate to v2
+      const files = []
+      const folders = []
+      for (const h of raw) {
+        if (h && typeof h.path === 'string') {
+          if (h.type === 'folder') folders.push({ path: h.path, time: h.time || 0 })
+          else files.push({ path: h.path, time: h.time || 0 })
+        }
+      }
+      history = { version: 2, files, folders }
+    } else if (raw && raw.version === 2 && Array.isArray(raw.files) && Array.isArray(raw.folders)) {
+      history = raw
+    } else {
+      history = { version: 2, files: [], folders: [] }
+    }
   } catch {
-    history = []
+    history = { version: 2, files: [], folders: [] }
   }
 }
 
@@ -178,15 +200,33 @@ function persistHistory() {
   }
 }
 
-function addHistory(type, entryPath) {
-  history = history.filter((h) => !(h.type === type && h.path === entryPath))
-  history.unshift({ type, path: entryPath, time: Date.now() })
-  if (history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY)
+function addFileHistory(filePath) {
+  history.files = history.files.filter((h) => h.path !== filePath)
+  history.files.unshift({ path: filePath, time: Date.now() })
+  if (history.files.length > MAX_FILE_HISTORY) history.files = history.files.slice(0, MAX_FILE_HISTORY)
   persistHistory()
 }
 
+function addFolderHistory(dirPath, state, preserveState = false) {
+  const existing = history.folders.find((h) => h.path === dirPath)
+  // Re-opening a folder should not wipe its saved working state.
+  const mergedState = preserveState && existing && existing.state ? existing.state : state || null
+  history.folders = history.folders.filter((h) => h.path !== dirPath)
+  history.folders.unshift({ path: dirPath, time: Date.now(), state: mergedState })
+  if (history.folders.length > MAX_FOLDER_HISTORY) history.folders = history.folders.slice(0, MAX_FOLDER_HISTORY)
+  persistHistory()
+}
+
+function updateFolderState(dirPath, state) {
+  const entry = history.folders.find((h) => h.path === dirPath)
+  if (entry) {
+    entry.state = state || null
+    persistHistory()
+  }
+}
+
 function clearHistory() {
-  history = []
+  history = { version: 2, files: [], folders: [] }
   persistHistory()
 }
 
@@ -277,24 +317,50 @@ function sendToRenderer(channel, ...args) {
 }
 
 function buildOpenRecentSubmenu() {
-  const valid = history.filter((h) => fs.existsSync(h.path))
-  if (valid.length === 0) {
+  const validFiles = history.files.filter((h) => fs.existsSync(h.path)).slice(0, MAX_FILE_HISTORY)
+  const validFolders = history.folders.filter((h) => fs.existsSync(h.path)).slice(0, MAX_FOLDER_HISTORY)
+
+  if (validFiles.length === 0 && validFolders.length === 0) {
     return [{ label: t('menu.noRecent'), enabled: false }]
   }
-  return [
-    ...valid.map((h) => ({
-      label: path.basename(h.path),
-      click: () => sendToRenderer(h.type === 'file' ? 'menu-open-recent' : 'menu-open-recent-folder', h.path)
-    })),
-    { type: 'separator' },
-    {
-      label: t('menu.clearRecent'),
-      click: () => {
-        clearHistory()
-        buildMenu()
-      }
+
+  const items = []
+
+  items.push({ label: t('menu.recentFiles'), enabled: false })
+  if (validFiles.length === 0) {
+    items.push({ label: t('menu.recentNoFiles'), enabled: false })
+  } else {
+    items.push(
+      ...validFiles.map((h) => ({
+        label: path.basename(h.path),
+        click: () => sendToRenderer('menu-open-recent', h.path)
+      }))
+    )
+  }
+
+  items.push({ type: 'separator' })
+  items.push({ label: t('menu.recentFolders'), enabled: false })
+  if (validFolders.length === 0) {
+    items.push({ label: t('menu.recentNoFolders'), enabled: false })
+  } else {
+    items.push(
+      ...validFolders.map((h) => ({
+        label: path.basename(h.path),
+        click: () => sendToRenderer('menu-open-recent-folder', h.path)
+      }))
+    )
+  }
+
+  items.push({ type: 'separator' })
+  items.push({
+    label: t('menu.clearRecent'),
+    click: () => {
+      clearHistory()
+      buildMenu()
     }
-  ]
+  })
+
+  return items
 }
 
 function buildEncodingSubmenu() {
@@ -529,7 +595,7 @@ ipcMain.handle('save-file', async (event, content) => {
   if (currentFilePath) {
     try {
       const info = writeFileWithEncoding(currentFilePath, content)
-      addHistory('file', currentFilePath)
+      addFileHistory(currentFilePath)
       return { success: true, path: currentFilePath, encoding: info.encoding }
     } catch (error) {
       console.error('Failed to save file:', error)
@@ -553,7 +619,7 @@ ipcMain.handle('save-file-as', async (event, content) => {
   buildMenu()
   try {
     const info = writeFileWithEncoding(currentFilePath, content)
-    addHistory('file', currentFilePath)
+    addFileHistory(currentFilePath)
     return { success: true, path: currentFilePath, encoding: info.encoding }
   } catch (error) {
     console.error('Failed to save file as:', error)
@@ -582,7 +648,7 @@ ipcMain.handle('open-file', async (event) => {
   try {
     const { content, encoding } = readFileWithEncoding(filePath)
     currentFilePath = filePath
-    addHistory('file', filePath)
+    addFileHistory(filePath)
     buildMenu()
     return { success: true, content, path: filePath, encoding }
   } catch (error) {
@@ -591,11 +657,15 @@ ipcMain.handle('open-file', async (event) => {
   }
 })
 
-ipcMain.handle('open-file-with-path', async (event, filePath) => {
+ipcMain.handle('open-file-with-path', async (event, filePath, recordHistory) => {
   try {
     const { content, encoding } = readFileWithEncoding(filePath)
     currentFilePath = filePath
-    addHistory('file', filePath)
+    // Files opened from inside a folder tree are NOT recorded in the recent-files
+    // group (the folder itself carries the state); standalone opens are recorded.
+    if (recordHistory !== false) {
+      addFileHistory(filePath)
+    }
     buildMenu()
     return { success: true, content, path: filePath, encoding }
   } catch (error) {
@@ -792,20 +862,34 @@ ipcMain.handle('open-folder', async (event) => {
   const dirPath = filePaths[0]
   const tree = buildTree(dirPath)
   watchFolder(dirPath, event.sender)
-  addHistory('folder', dirPath)
+  addFolderHistory(dirPath, null)
   return { success: true, path: dirPath, tree }
 })
 
 ipcMain.handle('open-folder-by-path', async (event, dirPath) => {
   const tree = buildTree(dirPath)
   watchFolder(dirPath, event.sender)
-  addHistory('folder', dirPath)
+  // Re-opening a folder (e.g. from Open Recent) preserves its saved state.
+  addFolderHistory(dirPath, null, true)
   return { success: true, path: dirPath, tree }
 })
 
 ipcMain.handle('get-folder-tree', async (event, dirPath) => {
   const tree = buildTree(dirPath)
   return { success: true, tree }
+})
+
+// Persist a folder's last working state (file, scrollTop, cursor, expanded dirs).
+// Called debounced from the renderer while a folder context is active.
+ipcMain.handle('save-folder-state', async (event, dirPath, state) => {
+  updateFolderState(dirPath, state)
+  return { success: true }
+})
+
+// Fetch a folder's saved state (used when opening from Open Recent -> Folders).
+ipcMain.handle('get-folder-state', async (event, dirPath) => {
+  const entry = history.folders.find((h) => h.path === dirPath)
+  return { success: true, state: entry ? entry.state : null }
 })
 
 ipcMain.handle('watch-folder', async (event, dirPath) => {

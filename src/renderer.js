@@ -237,15 +237,22 @@ window.electronAPI.onMenuOpen(async () => {
   }
   const result = await window.electronAPI.openFile()
   if (result.success && result.path) {
-    activeFilePath = result.path
-    muya.markdown = result.content
-    muya.setMarkdown(result.content)
-    resetEditorScroll()
-    markSaved(result.content)
-    setCurrentEncoding(result.encoding)
-    updateActiveFileHighlight()
+    // Persist the folder's last state BEFORE switching to a standalone file.
+    await leaveFolderContext()
+    await applyFileContent(result, result.path)
   }
 })
+
+// Exit any open-folder context (standalone file open via Cmd+O or Recent).
+async function leaveFolderContext() {
+  if (!activeFolderPath) return
+  await saveFolderStateNow()
+  activeFolderPath = null
+  expandedPaths.clear()
+  renderTree(null)
+  sidebar.classList.add('collapsed')
+  document.body.classList.remove('sidebar-open')
+}
 
 window.electronAPI.onMenuSave(async () => {
   if (activeFilePath) {
@@ -1051,15 +1058,14 @@ async function selectFile(filePath) {
     }
   }
 
-  const result = await window.electronAPI.openFileWithPath(filePath)
+  // Files opened from inside an open folder are not recorded in the recent-files
+  // list; the folder entry carries the working state instead.
+  const inFolderContext = activeFolderPath !== null
+  const result = await window.electronAPI.openFileWithPath(filePath, inFolderContext ? false : true)
   if (result.success) {
-    activeFilePath = filePath
-    muya.markdown = result.content
-    muya.setMarkdown(result.content)
-    resetEditorScroll()
-    markSaved(result.content)
-    setCurrentEncoding(result.encoding)
-    updateActiveFileHighlight()
+    await applyFileContent(result, filePath)
+    // In-folder file switches update the folder's working state.
+    if (inFolderContext) scheduleFolderStateSave()
   } else {
     alert(t('alert.openFailed', { error: result.error || '' }))
   }
@@ -1738,8 +1744,91 @@ async function openFolderByPath(dirPath) {
     if (result.tree) renderTree(result.tree)
     sidebar.classList.remove('collapsed')
     document.body.classList.add('sidebar-open')
+    // Restore last working state (file + scroll + cursor + expanded dirs) when
+    // opening from Open Recent -> Folders.
+    await restoreFolderState(dirPath)
   } else {
     alert(t('alert.openFailed', { error: result.error || '' }))
+  }
+}
+
+// ===================== Folder working-state save/restore =====================
+let folderStateSaveTimer = null
+
+function scheduleFolderStateSave() {
+  if (!activeFolderPath) return
+  if (folderStateSaveTimer) clearTimeout(folderStateSaveTimer)
+  folderStateSaveTimer = setTimeout(saveFolderStateNow, 800)
+}
+
+async function saveFolderStateNow() {
+  folderStateSaveTimer = null
+  if (!activeFolderPath) return
+  try {
+    const editor = document.querySelector('#editor') || document.querySelector('#ag-editor-id')
+    const cursor = muya ? muya.getCursor() : null
+    const state = {
+      file: activeFilePath,
+      scrollTop: editor ? editor.scrollTop : 0,
+      cursor: cursor
+        ? { anchor: cursor.anchor, focus: cursor.focus }
+        : null,
+      expanded: [...expandedPaths].filter((p) => p !== activeFolderPath)
+    }
+    await window.electronAPI.saveFolderState(activeFolderPath, state)
+  } catch (err) {
+    console.error('Failed to save folder state:', err)
+  }
+}
+
+async function restoreFolderState(dirPath) {
+  try {
+    const { state } = await window.electronAPI.getFolderState(dirPath)
+    if (!state) return
+
+    // Restore expanded directories
+    if (Array.isArray(state.expanded)) {
+      for (const p of state.expanded) expandedPaths.add(p)
+    }
+    // Refresh tree with restored expansions
+    const treeResult = await window.electronAPI.getFolderTree(dirPath)
+    if (treeResult.success) renderTree(treeResult.tree)
+
+    // Restore last file
+    if (state.file) {
+      const probe = await window.electronAPI.openFileWithPath(state.file, false)
+      if (probe.success && probe.path) {
+        // selectFile would re-read the file; use the probed content to avoid a
+        // second read and to skip history recording.
+        await applyFileContent(probe, state.file)
+        // Restore scroll & cursor after render settles
+        const editor = document.querySelector('#editor') || document.querySelector('#ag-editor-id')
+        setTimeout(() => {
+          if (editor && typeof state.scrollTop === 'number') editor.scrollTop = state.scrollTop
+          if (muya && state.cursor) {
+            try {
+              muya.setCursor(state.cursor)
+            } catch (e) {
+              console.error('Failed to restore cursor:', e)
+            }
+          }
+        }, 120)
+      }
+    }
+  } catch (err) {
+    console.error('Failed to restore folder state:', err)
+  }
+}
+
+async function applyFileContent(result, filePath) {
+  if (result.success && result.path) {
+    activeFilePath = filePath
+    muya.markdown = result.content
+    muya.setMarkdown(result.content)
+    resetEditorScroll()
+    markSaved(result.content)
+    setCurrentEncoding(result.encoding)
+    updateActiveFileHighlight()
   }
 }
 
@@ -1748,12 +1837,44 @@ async function openFolderByPath(dirPath) {
 // ==========================================
 
 window.electronAPI.onMenuOpenRecent((filePath) => {
-  selectFile(filePath)
+  // Opening from Open Recent is a standalone open: always record it in the
+  // recent-files group regardless of an open folder context.
+  openRecentFile(filePath)
 })
+
+async function openRecentFile(filePath) {
+  const result = await window.electronAPI.openFileWithPath(filePath, true)
+  if (result.success && result.path) {
+    // Recent-file open is standalone: persist folder state first, then exit.
+    await leaveFolderContext()
+    await applyFileContent(result, filePath)
+  } else {
+    alert(t('alert.openFailed', { error: result.error || '' }))
+  }
+}
 
 window.electronAPI.onMenuOpenRecentFolder((dirPath) => {
   openFolderByPath(dirPath)
 })
+
+// Capture folder working state (scroll / cursor / expanded) while a folder
+// context is active. Debounced so normal editing does not write to disk often.
+const editorScrollEl = document.querySelector('#editor') || document.querySelector('#main-content')
+if (editorScrollEl) {
+  editorScrollEl.addEventListener('scroll', () => {
+    if (activeFolderPath) scheduleFolderStateSave()
+  }, { passive: true })
+}
+document.addEventListener('selectionchange', () => {
+  if (activeFolderPath) scheduleFolderStateSave()
+})
+const expandObserver = new MutationObserver(() => {
+  if (activeFolderPath) scheduleFolderStateSave()
+})
+const treeContainer = document.querySelector('#sidebar-tree')
+if (treeContainer) {
+  expandObserver.observe(treeContainer, { subtree: true, childList: true })
+}
 
 window.electronAPI.onMenuReopenEncoding((encoding) => {
   handleReopenEncoding(encoding)

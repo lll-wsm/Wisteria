@@ -8,7 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   newFile: () => ipcRenderer.invoke('new-file'),
   
   // Specific path file operations (for sidebar workspace)
-  openFileWithPath: (filePath) => ipcRenderer.invoke('open-file-with-path', filePath),
+  openFileWithPath: (filePath, recordHistory) => ipcRenderer.invoke('open-file-with-path', filePath, recordHistory),
   saveFileWithPath: (filePath, content) => ipcRenderer.invoke('save-file-with-path', filePath, content),
   reopenWithEncoding: (filePath, encoding) => ipcRenderer.invoke('reopen-with-encoding', filePath, encoding),
   
@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openFolderByPath: (dirPath) => ipcRenderer.invoke('open-folder-by-path', dirPath),
   getFolderTree: (dirPath) => ipcRenderer.invoke('get-folder-tree', dirPath),
   watchFolder: (dirPath) => ipcRenderer.invoke('watch-folder', dirPath),
+  saveFolderState: (dirPath, state) => ipcRenderer.invoke('save-folder-state', dirPath, state),
+  getFolderState: (dirPath) => ipcRenderer.invoke('get-folder-state', dirPath),
   createFile: (parentPath, name) => ipcRenderer.invoke('create-file', parentPath, name),
   createFolder: (parentPath, name) => ipcRenderer.invoke('create-folder', parentPath, name),
   renamePath: (oldPath, newPath) => ipcRenderer.invoke('rename-path', oldPath, newPath),
