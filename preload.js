@@ -24,6 +24,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Settings
   getLanguage: () => ipcRenderer.invoke('get-language'),
+  getSettings: () => ipcRenderer.invoke('settings-get'),
+  saveSettings: (patch) => ipcRenderer.invoke('settings-set', patch),
+  onSettingsChanged: (callback) => ipcRenderer.on('settings-changed', (event, settings) => callback(settings)),
   
   // Asset Ops
   saveAsset: (buffer, extension) => ipcRenderer.invoke('save-asset', buffer, extension),
@@ -34,7 +37,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Menu Listeners
   onMenuNew: (callback) => ipcRenderer.on('menu-new', () => callback()),
+  onMenuUndo: (callback) => ipcRenderer.on('menu-undo', () => callback()),
+  onMenuRedo: (callback) => ipcRenderer.on('menu-redo', () => callback()),
   onMenuOpen: (callback) => ipcRenderer.on('menu-open', () => callback()),
+  onMenuOpenFolder: (callback) => ipcRenderer.on('menu-open-folder', () => callback()),
   onMenuSave: (callback) => ipcRenderer.on('menu-save', () => callback()),
   onMenuSaveAs: (callback) => ipcRenderer.on('menu-save-as', () => callback()),
   onMenuPdf: (callback) => ipcRenderer.on('menu-pdf', () => callback()),
@@ -45,5 +51,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onMenuOpenRecentFolder: (callback) => ipcRenderer.on('menu-open-recent-folder', (event, dirPath) => callback(dirPath)),
   onMenuReopenEncoding: (callback) => ipcRenderer.on('menu-reopen-encoding', (event, encoding) => callback(encoding)),
   onLanguageChanged: (callback) => ipcRenderer.on('language-changed', (event, lang) => callback(lang)),
-  onFolderUpdate: (callback) => ipcRenderer.on('folder-update', (event, tree) => callback(tree))
+  onFolderUpdate: (callback) => ipcRenderer.on('folder-update', (event, tree) => callback(tree)),
+
+  // Window Controls (frameless titlebar)
+  windowToggleZoom: () => ipcRenderer.send('window-toggle-zoom'),
+  setWindowBackground: (color) => ipcRenderer.send('window-set-bg', color)
 })

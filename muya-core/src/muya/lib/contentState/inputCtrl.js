@@ -102,7 +102,13 @@ const inputCtrl = (ContentState) => {
 
     const { start: oldStart, end: oldEnd } = this.cursor
     const key = start.key
-    const block = this.getBlock(key)
+    let block = this.getBlock(key)
+    // Fix: 无语言代码块的 codeContent 光标会解析到外层 code block（type='code'），
+    // 而渲染读取的是其 codeContent 子块文本。重定向到 codeContent 保证模型与渲染一致，
+    // 否则 autoPair 等触发渲染的输入会把已输入内容渲染为空。
+    if (block && block.type === 'code' && block.children.length && block.children[0].functionType === 'codeContent') {
+      block = block.children[0]
+    }
     const paragraph = document.querySelector(`#${key}`)
 
     // Fix issue 1447

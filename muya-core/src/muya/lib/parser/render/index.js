@@ -120,6 +120,18 @@ class StateRender {
           continue
         }
 
+        // Reuse the previously rendered svg when neither code nor theme changed,
+        // so caret/selection changes near the diagram don't rebuild and repaint it.
+        const cached = this.mermaidSvgCache && this.mermaidSvgCache.get(key)
+        if (cached && cached.code === code && cached.theme === this.muya.options.mermaidTheme) {
+          target.innerHTML = cached.svg
+          target.classList.remove(CLASS_OR_ID.AG_MATH_ERROR)
+          if (cached.bindFunctions) {
+            cached.bindFunctions(target)
+          }
+          continue
+        }
+
         const currentVersion = (this.mermaidRenderVersion.get(key) || 0) + 1
         this.mermaidRenderVersion.set(key, currentVersion)
 
@@ -135,13 +147,28 @@ class StateRender {
           }
           target.innerHTML = svg
           target.classList.remove(CLASS_OR_ID.AG_MATH_ERROR)
+          if (!this.mermaidSvgCache) {
+            this.mermaidSvgCache = new Map()
+          }
+          this.mermaidSvgCache.set(key, { code, svg, bindFunctions, theme: this.muya.options.mermaidTheme })
           if (bindFunctions) {
             bindFunctions(target)
           }
         } catch (err) {
           if (this.mermaidRenderVersion.get(key) === currentVersion) {
-            target.innerHTML = '< Invalid Mermaid Codes >'
             target.classList.add(CLASS_OR_ID.AG_MATH_ERROR)
+            // Keep the last good diagram on transient syntax errors while
+            // typing; only show the error placeholder when there is no
+            // previous successful render to keep.
+            const lastGood = this.mermaidSvgCache && this.mermaidSvgCache.get(key)
+            if (lastGood) {
+              target.innerHTML = lastGood.svg
+              if (lastGood.bindFunctions) {
+                lastGood.bindFunctions(target)
+              }
+            } else {
+              target.innerHTML = '< Invalid Mermaid Codes >'
+            }
           }
         }
       }

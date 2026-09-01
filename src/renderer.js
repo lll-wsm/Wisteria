@@ -1,20 +1,50 @@
 import Muya from 'muya-core'
+import QuickInsert from 'muya-core/src/muya/lib/ui/quickInsert'
+import CodePicker from 'muya-core/src/muya/lib/ui/codePicker'
+import TablePicker from 'muya-core/src/muya/lib/ui/tablePicker'
+import EmojiPicker from 'muya-core/src/muya/lib/ui/emojiPicker'
+import TableBarTools from 'muya-core/src/muya/lib/ui/tableTools'
+import FormatPicker from 'muya-core/src/muya/lib/ui/formatPicker'
+import FrontMenu from 'muya-core/src/muya/lib/ui/frontMenu'
+import LinkTools from 'muya-core/src/muya/lib/ui/linkTools'
+import ImageToolbar from 'muya-core/src/muya/lib/ui/imageToolbar'
+import ImageSelector from 'muya-core/src/muya/lib/ui/imageSelector'
+import ImagePathPicker from 'muya-core/src/muya/lib/ui/imagePicker'
+import FootnoteTool from 'muya-core/src/muya/lib/ui/footnoteTool'
 import 'muya-core/src/muya/lib/assets/styles/index.css'
 import enUS from '../locales/en-US.json'
 import zhCN from '../locales/zh-CN.json'
 import ENCODINGS from '../shared/encodings.json'
 
+// Register Muya UI plugins (format toolbar, quick insert, pickers, etc.);
+// without this the floating tools never get instantiated.
+Muya.use(QuickInsert)
+Muya.use(CodePicker)
+Muya.use(TablePicker)
+Muya.use(EmojiPicker)
+Muya.use(TableBarTools)
+Muya.use(FormatPicker)
+Muya.use(FrontMenu)
+Muya.use(LinkTools)
+Muya.use(ImageToolbar)
+Muya.use(ImageSelector)
+Muya.use(ImagePathPicker)
+Muya.use(FootnoteTool)
+
+// i18n must be initialized before Muya construction (Muya calls options.t during init)
+let currentLang = 'en-US'
+const dicts = { 'en-US': enUS, 'zh-CN': zhCN }
+
 const container = document.querySelector('#editor')
 const muya = new Muya(container, {
-  markdown: '# Hello Wisteria\n\nThis is your new minimalist editor.'
+  markdown: '',
+  t,
+  mermaidTheme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
 })
 
 console.log('Muya initialized:', muya)
 
 // ===================== i18n (renderer) =====================
-let currentLang = 'en-US'
-const dicts = { 'en-US': enUS, 'zh-CN': zhCN }
-
 function t(key, vars) {
   let str = (dicts[currentLang] && dicts[currentLang][key]) || dicts['en-US'][key] || key
   if (vars) {
@@ -47,6 +77,10 @@ function applyI18n() {
   document.querySelectorAll('[data-i18n-title]').forEach((el) => {
     el.title = t(el.dataset.i18nTitle)
   })
+  // Re-capture the (translated) stock contents of the right-click menu
+  if (typeof menu !== 'undefined' && menu) {
+    menuStaticHTML = menu.innerHTML
+  }
 }
 
 // ===================== Dirty tracking =====================
@@ -115,12 +149,21 @@ container.addEventListener('keydown', (e) => {
 
 // Floating Menu Logic
 const menu = document.querySelector('#floating-menu')
+let menuStaticHTML = menu.innerHTML
+
+function hideFloatMenu() {
+  menu.classList.remove('show')
+  menu.innerHTML = menuStaticHTML
+}
 
 window.addEventListener('contextmenu', (e) => {
   // Only show custom menu if we're not right-clicking an image or specific UI element
   if (e.target.closest('.ag-image-container')) return 
 
   e.preventDefault()
+
+  // Always start from the main menu (e.g. after the encoding submenu was open)
+  menu.innerHTML = menuStaticHTML
 
   // Basic collision detection with window edges
   const menuWidth = 180
@@ -137,10 +180,18 @@ window.addEventListener('contextmenu', (e) => {
 })
 
 window.addEventListener('click', () => {
-  menu.classList.remove('show')
+  hideFloatMenu()
 })
 
 // IPC Listeners (from Electron Menu)
+window.electronAPI.onMenuUndo(() => {
+  muya.undo()
+})
+
+window.electronAPI.onMenuRedo(() => {
+  muya.redo()
+})
+
 window.electronAPI.onMenuNew(async () => {
   if (activeFilePath) {
     try {
@@ -153,7 +204,7 @@ window.electronAPI.onMenuNew(async () => {
   muya.markdown = '# New Document\n\n'
   muya.setMarkdown('# New Document\n\n')
   markSaved(muya.markdown)
-  updateEncodingIndicator(null)
+  setCurrentEncoding(null)
   updateActiveFileHighlight()
 })
 
@@ -171,7 +222,7 @@ window.electronAPI.onMenuOpen(async () => {
     muya.markdown = result.content
     muya.setMarkdown(result.content)
     markSaved(result.content)
-    updateEncodingIndicator(result.encoding)
+    setCurrentEncoding(result.encoding)
     updateActiveFileHighlight()
   }
 })
@@ -181,14 +232,14 @@ window.electronAPI.onMenuSave(async () => {
     const result = await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
     if (result.success) {
       markSaved(muya.markdown)
-      updateEncodingIndicator(result.encoding)
+      setCurrentEncoding(result.encoding)
     }
   } else {
     const result = await window.electronAPI.saveFile(muya.markdown)
     if (result.success && result.path) {
       activeFilePath = result.path
       markSaved(muya.markdown)
-      updateEncodingIndicator(result.encoding)
+      setCurrentEncoding(result.encoding)
       updateActiveFileHighlight()
     }
   }
@@ -199,7 +250,7 @@ window.electronAPI.onMenuSaveAs(async () => {
   if (result.success && result.path) {
     activeFilePath = result.path
     markSaved(muya.markdown)
-    updateEncodingIndicator(result.encoding)
+    setCurrentEncoding(result.encoding)
     updateActiveFileHighlight()
   }
 })
@@ -256,6 +307,22 @@ document.querySelector('#floating-menu').addEventListener('click', async (e) => 
   const target = e.target.closest('.menu-item')
   if (!target) return
   const action = target.id
+
+  if (action === 'menu-encoding') {
+    e.stopPropagation()
+    showEncodingMenuInFloat()
+    return
+  }
+  if (action === 'menu-back') {
+    e.stopPropagation()
+    menu.innerHTML = menuStaticHTML
+    return
+  }
+  if (action.startsWith('enc-')) {
+    hideFloatMenu()
+    handleReopenEncoding(target.dataset.encoding)
+    return
+  }
   
   // Re-focus just in case, though mousedown preventDefault should have kept it
   if (muya && typeof muya.focus === 'function') {
@@ -303,14 +370,14 @@ document.querySelector('#floating-menu').addEventListener('click', async (e) => 
         const saveResult = await window.electronAPI.saveFileWithPath(activeFilePath, muya.markdown)
         if (saveResult.success) {
           markSaved(muya.markdown)
-          updateEncodingIndicator(saveResult.encoding)
+          setCurrentEncoding(saveResult.encoding)
         }
       } else {
         const result = await window.electronAPI.saveFile(muya.markdown)
         if (result.success && result.path) {
           activeFilePath = result.path
           markSaved(muya.markdown)
-          updateEncodingIndicator(result.encoding)
+          setCurrentEncoding(result.encoding)
           updateActiveFileHighlight()
         }
       }
@@ -320,7 +387,7 @@ document.querySelector('#floating-menu').addEventListener('click', async (e) => 
       if (result.success && result.path) {
         activeFilePath = result.path
         markSaved(muya.markdown)
-        updateEncodingIndicator(result.encoding)
+        setCurrentEncoding(result.encoding)
         updateActiveFileHighlight()
       }
       break
@@ -331,52 +398,55 @@ document.querySelector('#floating-menu').addEventListener('click', async (e) => 
       const html = await muya.exportStyledHTML({ title: 'Wisteria Document' });
       window.electronAPI.exportHtml(html);
       break
-    case 'menu-theme':
-      document.body.classList.toggle('theme-dark')
-      break
   }
 })
 
-// Status Bar Logic
-const wordCountDisplay = document.querySelector('#status-word-count')
-const charCountDisplay = document.querySelector('#status-char-count')
-
-function updateStatusBar(wordCount) {
-  if (!wordCountDisplay || !charCountDisplay) return
-  wordCountDisplay.innerText = t('status.words', { count: wordCount.word })
-  charCountDisplay.innerText = t('status.characters', { count: wordCount.character })
-}
-
 muya.on('change', (payload) => {
-  updateStatusBar(payload.wordCount)
   isDirty = muya.markdown !== lastSavedMarkdown
   if (typeof findReplacePanel !== 'undefined' && findReplacePanel && !findReplacePanel.classList.contains('hidden')) {
     performSearch(true)
   }
 })
 
-// Theme Initialization
-function initTheme() {
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-  
-  const applyTheme = (e) => {
-    if (e.matches) {
-      document.body.classList.add('theme-dark')
-    } else {
-      document.body.classList.remove('theme-dark')
-    }
+// Theme Initialization (settings-driven: light / dark / system)
+let currentTheme = 'system'
+const themeMedia = window.matchMedia('(prefers-color-scheme: dark)')
+
+// Keep Mermaid's built-in theme in sync so diagrams are readable in both modes
+function syncMermaidTheme() {
+  if (!muya || !muya.options) return
+  const theme = document.body.classList.contains('theme-dark') ? 'dark' : 'default'
+  if (muya.options.mermaidTheme === theme) return
+  muya.options.mermaidTheme = theme
+  muya.contentState.render(true)
+}
+
+function applyTheme(theme) {
+  currentTheme = theme || 'system'
+  const dark = currentTheme === 'dark' || (currentTheme === 'system' && themeMedia.matches)
+  document.body.classList.toggle('theme-dark', dark)
+  syncWindowBackground()
+  syncMermaidTheme()
+}
+
+async function initTheme() {
+  try {
+    const settings = await window.electronAPI.getSettings()
+    applyTheme(settings && settings.theme)
+  } catch (e) {
+    applyTheme('system')
   }
-
-  // Initial check
-  applyTheme(mediaQuery)
-
-  // Listen for changes
-  mediaQuery.addEventListener('change', applyTheme)
+  themeMedia.addEventListener('change', () => {
+    if (currentTheme === 'system') applyTheme('system')
+  })
 }
 
 // Initial update
-updateStatusBar(muya.getWordCount(muya.markdown))
 initTheme()
+
+window.electronAPI.onSettingsChanged((settings) => {
+  if (settings && settings.theme) applyTheme(settings.theme)
+})
 
 // ==========================================
 // Find & Replace Logic (VS Code Style)
@@ -743,6 +813,44 @@ function toggleSidebar() {
 
 sidebarToggle.addEventListener('click', toggleSidebar)
 
+// ==========================================
+// Window Controls (macOS traffic lights are native; only zoom + theme bg are JS-driven)
+// ==========================================
+
+// Keep the editor's selection/cursor alive when clicking buttons inside Muya's
+// floating toolbars. Without this, mousedown on the float collapses the DOM
+// selection (and Muya's cursor), so the format tools silently no-op.
+// Inputs/links are excluded so they can still receive focus.
+document.addEventListener(
+  'mousedown',
+  (e) => {
+    const float = e.target.closest('.ag-float-container')
+    if (!float) return
+    if (e.target.closest('input, textarea, select, a')) return
+    e.preventDefault()
+  },
+  true
+)
+
+// Double-click the drag area to zoom (macOS titlebar behavior)
+document.querySelector('#titlebar').addEventListener('dblclick', (e) => {
+  if (e.target.closest('button')) return
+  window.electronAPI.windowToggleZoom()
+})
+
+// Keep the native window background in sync with the app theme (avoids flash while resizing)
+function syncWindowBackground() {
+  const dark = document.body.classList.contains('theme-dark')
+  window.electronAPI.setWindowBackground(dark ? '#1a1a1a' : '#ffffff')
+}
+
+const sidebarCollapseBtn = document.querySelector('#sidebar-collapse-btn')
+if (sidebarCollapseBtn) {
+  // Keep editor focus when collapsing via the header button
+  sidebarCollapseBtn.addEventListener('mousedown', (e) => e.preventDefault())
+  sidebarCollapseBtn.addEventListener('click', toggleSidebar)
+}
+
 // Global keyboard shortcut Cmd+B (macOS) / Ctrl+B (Windows/Linux)
 window.addEventListener('keydown', (e) => {
   if (activeTreeInput && activeTreeInput.isConnected) return
@@ -773,7 +881,7 @@ async function selectFile(filePath) {
     muya.markdown = result.content
     muya.setMarkdown(result.content)
     markSaved(result.content)
-    updateEncodingIndicator(result.encoding)
+    setCurrentEncoding(result.encoding)
     updateActiveFileHighlight()
   } else {
     alert(t('alert.openFailed', { error: result.error || '' }))
@@ -819,18 +927,10 @@ async function handleOpenFolder() {
   }
 }
 
-const openFolderBtn = document.querySelector('#open-folder-btn')
-if (openFolderBtn) {
-  openFolderBtn.addEventListener('mousedown', (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    handleOpenFolder()
-  })
-  openFolderBtn.addEventListener('click', (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-  })
-}
+// Open Folder via the File menu
+window.electronAPI.onMenuOpenFolder(() => {
+  handleOpenFolder()
+})
 
 // Watcher listener for live updates
 window.electronAPI.onFolderUpdate((tree) => {
@@ -842,7 +942,6 @@ function renderTree(tree) {
   if (!tree) {
     sidebarTreeContainer.innerHTML = `
       <div class="empty-state">
-        <p data-i18n="sidebar.emptyFolder">${t('sidebar.emptyFolder')}</p>
         <button id="sidebar-open-folder-cta" data-i18n="sidebar.openFolder">${t('sidebar.openFolder')}</button>
       </div>
     `
@@ -901,15 +1000,13 @@ function createTreeNodeDOM(node) {
   }
   itemDiv.appendChild(arrowSpan)
 
-  // Icon (Folder or File SVG)
-  const iconSpan = document.createElement('span')
-  iconSpan.className = 'icon'
-  if (node.isDir) {
-    iconSpan.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`
-  } else {
+  // Icon (files only; folders show the chevron arrow alone)
+  if (!node.isDir) {
+    const iconSpan = document.createElement('span')
+    iconSpan.className = 'icon'
     iconSpan.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`
+    itemDiv.appendChild(iconSpan)
   }
-  itemDiv.appendChild(iconSpan)
 
   // Label
   const nameSpan = document.createElement('span')
@@ -1397,65 +1494,37 @@ sidebarContextMenu.addEventListener('click', async (e) => {
 })
 
 // ==========================================
-// Encoding Indicator & Popup
+// File Encoding (available in the right-click menu)
 // ==========================================
 
-const encodingIndicator = document.querySelector('#status-encoding')
-const encodingMenu = document.querySelector('#encoding-menu')
 let currentFileEncoding = null
 
-function labelForEncoding(value) {
-  const found = ENCODINGS.find((e) => e.value === value)
-  return found ? found.label : value
-}
-
-function updateEncodingIndicator(encoding) {
+function setCurrentEncoding(encoding) {
   currentFileEncoding = encoding || null
-  if (!encodingIndicator) return
-  if (encoding) {
-    encodingIndicator.style.display = ''
-    encodingIndicator.textContent = `${labelForEncoding(encoding)} ▾`
-  } else {
-    encodingIndicator.style.display = 'none'
-    encodingMenu.classList.remove('show')
-  }
 }
 
-function buildEncodingMenuItems() {
-  encodingMenu.innerHTML = ''
+// Replaces the right-click menu contents with the encoding picker
+function showEncodingMenuInFloat() {
+  if (!activeFilePath) return
+  menu.innerHTML = ''
+  const back = document.createElement('div')
+  back.className = 'menu-item'
+  back.id = 'menu-back'
+  back.textContent = `‹ ${t('floating.back')}`
+  menu.appendChild(back)
+  const sep = document.createElement('hr')
+  sep.style.cssText = 'border: 0; border-top: 1px solid var(--menu-border); margin: 4px 0;'
+  menu.appendChild(sep)
   ENCODINGS.forEach((e) => {
     const item = document.createElement('div')
     item.className = 'menu-item'
+    item.id = `enc-${e.value}`
     item.dataset.encoding = e.value
     item.textContent = e.label
     if (currentFileEncoding === e.value) item.classList.add('active')
-    item.addEventListener('click', () => {
-      encodingMenu.classList.remove('show')
-      handleReopenEncoding(e.value)
-    })
-    encodingMenu.appendChild(item)
+    menu.appendChild(item)
   })
 }
-
-function showEncodingMenu() {
-  if (!currentFileEncoding) return
-  buildEncodingMenuItems()
-  const rect = encodingIndicator.getBoundingClientRect()
-  encodingMenu.style.left = `${Math.max(8, rect.left - 100)}px`
-  encodingMenu.style.top = `${Math.max(8, rect.top - encodingMenu.offsetHeight - 8)}px`
-  encodingMenu.classList.add('show')
-}
-
-if (encodingIndicator) {
-  encodingIndicator.addEventListener('click', (e) => {
-    e.stopPropagation()
-    showEncodingMenu()
-  })
-}
-
-window.addEventListener('click', () => {
-  encodingMenu.classList.remove('show')
-})
 
 async function handleReopenEncoding(encoding) {
   if (!activeFilePath || encoding === currentFileEncoding) return
@@ -1467,7 +1536,7 @@ async function handleReopenEncoding(encoding) {
     muya.markdown = result.content
     muya.setMarkdown(result.content)
     markSaved(result.content)
-    updateEncodingIndicator(result.encoding)
+    setCurrentEncoding(result.encoding)
     updateActiveFileHighlight()
   } else {
     alert(t('alert.openFailed', { error: result.error || '' }))
@@ -1514,7 +1583,6 @@ window.electronAPI.onMenuReopenEncoding((encoding) => {
 window.electronAPI.onLanguageChanged((lang) => {
   currentLang = lang
   applyI18n()
-  updateStatusBar(muya.getWordCount(muya.markdown))
   if (typeof findReplacePanel !== 'undefined' && findReplacePanel && !findReplacePanel.classList.contains('hidden')) {
     updateCountDisplay()
   }
@@ -1534,6 +1602,5 @@ renderTree(null)
     console.error('Failed to load language:', e)
   }
   applyI18n()
-  updateStatusBar(muya.getWordCount(muya.markdown))
   markSaved(muya.markdown)
 })()

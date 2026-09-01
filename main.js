@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, nativeTheme } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const iconv = require('iconv-lite')
@@ -8,8 +8,8 @@ const ENCODINGS = require('./shared/encodings.json')
 let mainWindow = null
 let currentFilePath = null
 
-// ===================== Settings (language) =====================
-let settings = { language: 'en-US' }
+// ===================== Settings (language / theme) =====================
+let settings = { language: 'en-US', theme: 'system' }
 
 function settingsFilePath() {
   return path.join(app.getPath('userData'), 'settings.json')
@@ -37,6 +37,9 @@ function loadSettings() {
   if (!['zh-CN', 'en-US'].includes(settings.language)) {
     settings.language = defaultLanguage()
   }
+  if (!['light', 'dark', 'system'].includes(settings.theme)) {
+    settings.theme = 'system'
+  }
 }
 
 function saveSettings() {
@@ -45,6 +48,14 @@ function saveSettings() {
     fs.writeFileSync(settingsFilePath(), JSON.stringify(settings, null, 2), 'utf8')
   } catch (error) {
     console.error('Failed to save settings:', error)
+  }
+}
+
+function broadcastToAll(channel, ...args) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send(channel, ...args)
+    }
   }
 }
 
@@ -237,6 +248,8 @@ function buildMenu() {
             submenu: [
               { role: 'about' },
               { type: 'separator' },
+              { label: t('menu.settings'), accelerator: 'Cmd+,', click: () => openSettingsWindow() },
+              { type: 'separator' },
               { role: 'services' },
               { type: 'separator' },
               { role: 'hide' },
@@ -253,6 +266,7 @@ function buildMenu() {
       submenu: [
         { label: t('menu.newFile'), accelerator: 'CmdOrCtrl+N', click: () => sendToRenderer('menu-new') },
         { label: t('menu.open'), accelerator: 'CmdOrCtrl+O', click: () => sendToRenderer('menu-open') },
+        { label: t('menu.openDirectory'), accelerator: 'CmdOrCtrl+Shift+O', click: () => sendToRenderer('menu-open-folder') },
         { label: t('menu.openRecent'), submenu: buildOpenRecentSubmenu() },
         { label: t('menu.reopenEncoding'), submenu: buildEncodingSubmenu(), enabled: !!currentFilePath },
         { type: 'separator' },
@@ -268,8 +282,8 @@ function buildMenu() {
     {
       label: t('menu.edit'),
       submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
+        { label: t('menu.undo'), accelerator: 'CmdOrCtrl+Z', click: () => sendToRenderer('menu-undo') },
+        { label: t('menu.redo'), accelerator: 'CmdOrCtrl+Shift+Z', click: () => sendToRenderer('menu-redo') },
         { type: 'separator' },
         { role: 'cut' },
         { role: 'copy' },
@@ -321,10 +335,50 @@ function buildMenu() {
 }
 
 // ===================== Window =====================
+let settingsWindow = null
+
+function openSettingsWindow() {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.focus()
+    return
+  }
+  settingsWindow = new BrowserWindow({
+    width: 640,
+    height: 480,
+    resizable: false,
+    fullscreenable: false,
+    minimizable: false,
+    titleBarStyle: 'hiddenInset',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1a1a1a' : '#ffffff',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js')
+    }
+  })
+  settingsWindow.on('closed', () => {
+    settingsWindow = null
+  })
+  // Try the Vite dev server first, fall back to the built file
+  const http = require('http')
+  const devUrl = 'http://localhost:5173/settings.html'
+  const req = http.get('http://localhost:5173', (res) => {
+    settingsWindow.loadURL(devUrl)
+  })
+  req.on('error', () => {
+    const settingsPath = path.join(__dirname, 'dist', 'settings.html')
+    if (fs.existsSync(settingsPath)) {
+      settingsWindow.loadFile(settingsPath)
+    } else {
+      settingsWindow.loadURL(devUrl)
+    }
+  })
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1020,
     height: 800,
+    titleBarStyle: 'hiddenInset',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1a1a1a' : '#ffffff',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js')
     }
@@ -338,6 +392,11 @@ function createWindow() {
   // Pipe renderer console logs to terminal
   win.webContents.on('console-message', (event, level, message, line, sourceId) => {
     console.log(`[Renderer] ${message}`)
+  })
+
+  // Detect renderer crashes (input regressions can crash the GPU/renderer process)
+  win.webContents.on('render-process-gone', (event, details) => {
+    console.log(`[dbg] RENDER_PROCESS_GONE reason=${details.reason} exitCode=${details.exitCode} crashed=${details.crashed}`)
   })
 
   // Try to load from Vite server (development), fallback to built files (production/standalone)
@@ -356,6 +415,21 @@ function createWindow() {
     }
   })
 }
+
+// ===================== Window Controls (frameless titlebar) =====================
+ipcMain.on('window-toggle-zoom', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (!win) return
+  if (win.isMaximized()) {
+    win.unmaximize()
+  } else {
+    win.maximize()
+  }
+})
+
+ipcMain.on('window-set-bg', (event, color) => {
+  BrowserWindow.fromWebContents(event.sender)?.setBackgroundColor(color)
+})
 
 app.whenReady().then(() => {
   loadSettings()
@@ -737,4 +811,32 @@ ipcMain.handle('trash-path', async (event, filePath) => {
 // ===================== IPC: Settings =====================
 ipcMain.handle('get-language', () => {
   return settings.language
+})
+
+ipcMain.handle('settings-get', () => {
+  return { language: settings.language, theme: settings.theme }
+})
+
+ipcMain.handle('settings-set', (event, patch) => {
+  if (!patch || typeof patch !== 'object') {
+    return { success: false, error: 'invalid patch' }
+  }
+  let changed = false
+  if ('language' in patch && ['zh-CN', 'en-US'].includes(patch.language) && patch.language !== settings.language) {
+    settings.language = patch.language
+    changed = true
+  }
+  if ('theme' in patch && ['light', 'dark', 'system'].includes(patch.theme) && patch.theme !== settings.theme) {
+    settings.theme = patch.theme
+    changed = true
+  }
+  if (changed) {
+    saveSettings()
+    buildMenu()
+    broadcastToAll('settings-changed', { language: settings.language, theme: settings.theme })
+    if ('language' in patch) {
+      sendToRenderer('language-changed', settings.language)
+    }
+  }
+  return { success: true, settings: { language: settings.language, theme: settings.theme } }
 })
