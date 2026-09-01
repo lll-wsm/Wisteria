@@ -206,11 +206,19 @@ body.sidebar-open #sidebar-toggle {
 }
 
 /* Markdown format markers (`**`, `*`, `~~`, backticks, link syntax) are rendered
-   as marker spans that MUST be hidden in WYSIWYG; the hiding rule lives in the
-   unloaded muya theme, so it is provided here (math/ruby keep their own handling) */
-#ag-editor-id .ag-hide:not(.ag-ruby):not(.ag-math),
-#ag-editor-id .ag-remove:not(.ag-ruby):not(.ag-math) {
-  display: none;
+   as marker spans with class ag-hide (hidden) or ag-gray (shown gray when the
+   cursor conflicts with the marker). Only ag-hide markers must be hidden;
+   hiding must NOT touch ag-gray (cursor-activated source markers) nor blanket
+   ag-remove (every marker carries ag-remove, including the shown ag-gray ones).
+   We use the same zero-size technique as muya's own theme instead of
+   display:none so a marker switching ag-hide -> ag-gray becomes visible. */
+#ag-editor-id .ag-hide:not(.ag-ruby):not(.ag-math) {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  vertical-align: middle;
+  user-select: none;
 }
 
 /* Horizontal rule (`---`) renders as a line instead of blank space */
