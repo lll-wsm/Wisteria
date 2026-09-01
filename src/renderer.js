@@ -203,6 +203,7 @@ window.electronAPI.onMenuNew(async () => {
   activeFilePath = null
   muya.markdown = '# New Document\n\n'
   muya.setMarkdown('# New Document\n\n')
+  resetEditorScroll()
   markSaved(muya.markdown)
   setCurrentEncoding(null)
   updateActiveFileHighlight()
@@ -221,6 +222,7 @@ window.electronAPI.onMenuOpen(async () => {
     activeFilePath = result.path
     muya.markdown = result.content
     muya.setMarkdown(result.content)
+    resetEditorScroll()
     markSaved(result.content)
     setCurrentEncoding(result.encoding)
     updateActiveFileHighlight()
@@ -1009,6 +1011,17 @@ window.addEventListener('keydown', (e) => {
 })
 
 // File Selection & Auto-save Logic
+
+// Reset the editor scroll position to the top after loading a new document.
+// The editor container keeps its scrollTop when switching files; a shorter
+// new document then shows mid-content instead of the start.
+function resetEditorScroll() {
+  const ed = document.querySelector('#editor')
+  if (ed) {
+    ed.scrollTop = 0
+  }
+}
+
 async function selectFile(filePath) {
   if (activeFilePath === filePath) return
 
@@ -1025,6 +1038,7 @@ async function selectFile(filePath) {
     activeFilePath = filePath
     muya.markdown = result.content
     muya.setMarkdown(result.content)
+    resetEditorScroll()
     markSaved(result.content)
     setCurrentEncoding(result.encoding)
     updateActiveFileHighlight()
@@ -1628,6 +1642,7 @@ sidebarContextMenu.addEventListener('click', async (e) => {
             activeFilePath = null
             muya.markdown = ''
             muya.setMarkdown('')
+            resetEditorScroll()
           }
         } else {
           alert(result.error || t('alert.deleteFailed'))
@@ -1680,6 +1695,7 @@ async function handleReopenEncoding(encoding) {
     activeFilePath = result.path
     muya.markdown = result.content
     muya.setMarkdown(result.content)
+    resetEditorScroll()
     markSaved(result.content)
     setCurrentEncoding(result.encoding)
     updateActiveFileHighlight()
