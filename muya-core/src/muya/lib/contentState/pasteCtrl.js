@@ -294,7 +294,13 @@ const pasteCtrl = (ContentState) => {
 
     let copyType = this.checkCopyType(html, text)
     const { start, end } = this.cursor
-    const startBlock = this.getBlock(start.key)
+    let startBlock = this.getBlock(start.key)
+    // Fix: 无语言代码块的粘贴光标解析到外层 code block（type='code'），
+    // 与 inputHandler 修复一致，重定向到 codeContent 子块，
+    // 否则粘贴文本会按普通块插入为新的 pre，出现重复代码块/复制按钮。
+    if (startBlock && startBlock.type === 'code' && startBlock.children.length && startBlock.children[0].functionType === 'codeContent') {
+      startBlock = startBlock.children[0]
+    }
     const endBlock = this.getBlock(end.key)
     const parent = this.getParent(startBlock)
 
