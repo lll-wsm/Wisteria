@@ -538,7 +538,7 @@ body.theme-dark #ag-editor-id figure.ag-container-block svg [stroke='#000000'] {
   background-color: var(--code-bg, rgba(0, 0, 0, 0.04));
   border: 1px solid var(--code-border, rgba(0, 0, 0, 0.15));
   border-radius: 6px;
-  padding: 0.75rem 1rem;
+  padding: 1rem 1.25rem;
 }
 
 /* Non-active (preview) code blocks keep a lighter background so they read
@@ -548,6 +548,7 @@ body.theme-dark #ag-editor-id figure.ag-container-block svg [stroke='#000000'] {
   background-color: var(--code-bg, rgba(0, 0, 0, 0.04));
   border: 1px solid var(--code-border, rgba(0, 0, 0, 0.15));
   border-radius: 6px;
+  padding: 1rem 1.25rem;
 }
 
 #ag-editor-id pre .ag-code-content {
