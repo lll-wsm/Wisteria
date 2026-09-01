@@ -499,6 +499,14 @@ body.theme-dark #ag-editor-id figure.ag-container-block svg [stroke='#000000'] {
   top: -20px;
 }
 
+/* The bottom-right fence marker (content "fence") duplicates the bottom-left
+   closing fence (pre::after) and overlaps the copy button in short blocks;
+   drop it so the copy button never collides with it. */
+#ag-editor-id pre.ag-active.ag-fence-code > code::before,
+#ag-editor-id pre.ag-active.ag-indent-code > code::before {
+  content: none;
+}
+
 /* Floating Menu Style */
 #floating-menu {
   position: absolute;
