@@ -5,6 +5,12 @@ const iconv = require('iconv-lite')
 const jschardet = require('jschardet')
 const ENCODINGS = require('./shared/encodings.json')
 
+// App display name (macOS app menu shows app.getName()). package.json name is
+// 'wisteria-editor', but the product is branded 'Wisteria'. Keep userData at the
+// stable 'wisteria-editor' path so settings/themes/history are not migrated.
+app.setName('Wisteria')
+app.setPath('userData', path.join(app.getPath('appData'), 'wisteria-editor'))
+
 let mainWindow = null
 let currentFilePath = null
 
