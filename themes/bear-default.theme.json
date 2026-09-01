@@ -1,0 +1,36 @@
+{
+  "name": "bear-default",
+  "label": "Bear Default",
+  "dark": false,
+  "colors": {
+    "bg": "#ffffff",
+    "font": "#222222",
+    "heading": "#262626",
+    "link": "#2478c5",
+    "primary": "#353535",
+    "del": "#525252",
+    "mark": "#fcffc0",
+    "code-bg": "#f7f7f7",
+    "code-font": "#424242",
+    "border": "#bfbfbf",
+    "inline-code": "#c7254e",
+    "code-keyword": "#2478c5",
+    "code-comment": "#575757",
+    "code-number": "#0b5d83",
+    "code-string": "#690",
+    "code-attr": "#950980",
+    "code-selector": "#b43d15",
+    "code-property": "#905",
+    "code-operator": "#920448",
+    "code-function": "#0E73A2",
+    "code-variable": "#0E73A2",
+    "code-punctuation": "#999"
+  },
+  "typography": {
+    "font-family": "AvenirNext-Regular, -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif",
+    "font-size": "16px",
+    "line-height": "1.6",
+    "heading-weight": 500,
+    "content-max-width": "46rem"
+  }
+}

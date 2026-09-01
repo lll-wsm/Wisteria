@@ -27,6 +27,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('settings-get'),
   saveSettings: (patch) => ipcRenderer.invoke('settings-set', patch),
   onSettingsChanged: (callback) => ipcRenderer.on('settings-changed', (event, settings) => callback(settings)),
+
+  // Pluggable themes (themes/*.theme.json in userData)
+  getThemeList: () => ipcRenderer.invoke('themes-list'),
+  getThemeContent: (name) => ipcRenderer.invoke('theme-get', name),
   
   // Asset Ops
   saveAsset: (buffer, extension) => ipcRenderer.invoke('save-asset', buffer, extension),

@@ -1,0 +1,36 @@
+{
+  "name": "vue",
+  "label": "Vue",
+  "dark": false,
+  "colors": {
+    "bg": "#ffffff",
+    "font": "#34495e",
+    "heading": "#34495e",
+    "link": "#42b983",
+    "primary": "#e96900",
+    "del": "#777777",
+    "mark": "#f8f8f8",
+    "code-bg": "#f8f8f8",
+    "code-font": "#34495e",
+    "border": "#ddd",
+    "inline-code": "#e96900",
+    "code-keyword": "#22a2c9",
+    "code-comment": "#777777",
+    "code-number": "#e96900",
+    "code-string": "#42b983",
+    "code-attr": "#e96900",
+    "code-selector": "#b4654d",
+    "code-property": "#22a2c9",
+    "code-operator": "#e96900",
+    "code-function": "#22a2c9",
+    "code-variable": "#34495e",
+    "code-punctuation": "#34495e"
+  },
+  "typography": {
+    "font-family": "-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif",
+    "font-size": "16px",
+    "line-height": "1.6",
+    "heading-weight": 600,
+    "content-max-width": "46rem"
+  }
+}

@@ -408,8 +408,9 @@ muya.on('change', (payload) => {
   }
 })
 
-// Theme Initialization (settings-driven: light / dark / system)
+// Theme Initialization (settings-driven: light / dark / system / pluggable file themes)
 let currentTheme = 'system'
+let currentThemeMeta = null // { name, label, dark, colors, typography } for file themes
 const themeMedia = window.matchMedia('(prefers-color-scheme: dark)')
 
 // Keep Mermaid's built-in theme in sync so diagrams are readable in both modes
@@ -421,10 +422,148 @@ function syncMermaidTheme() {
   muya.contentState.render(true)
 }
 
-function applyTheme(theme) {
+// Map a pluggable theme's color/typography values onto the app's CSS variable
+// surface (muya core + editor chrome + prism tokens) via a generated <style>.
+function applyFileTheme(theme) {
+  if (!theme || !theme.colors) return
+  currentThemeMeta = theme
+  const c = theme.colors
+  // Derive translucent editorColor* variants from the base font color.
+  // Helper: expand "#rrggbb" (or "rgb(r,g,b)") into rgba with given alpha.
+  const toRgba = (color, alpha) => {
+    let m = /^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/.exec(color)
+    if (m) {
+      return `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, ${alpha})`
+    }
+    m = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:[^)]*)\)$/.exec(color)
+    if (m) {
+      return `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})`
+    }
+    return color
+  }
+  const fontBase = c.font || '#222222'
+  const css = `
+body.theme-file-theme, body.theme-file-theme #ag-editor-id {
+  --bg-color: ${c.bg || '#ffffff'};
+  --text-color: ${fontBase};
+  --editorColor: ${fontBase};
+  --themeColor: ${c.primary || c.link || fontBase};
+  --editorColor10: ${toRgba(fontBase, 0.1)};
+  --editorColor30: ${toRgba(fontBase, 0.3)};
+  --editorColor50: ${toRgba(fontBase, 0.5)};
+  --editorColor80: ${toRgba(fontBase, 0.8)};
+  --editorColor04: ${toRgba(fontBase, 0.04)};
+  --floatBgColor: ${c.bg || '#ffffff'};
+  --highLightColor: ${toRgba(c.mark || '#ffea8c', 0.45)};
+  --highlightColor: ${toRgba(c.mark || '#ffea8c', 0.45)};
+  --tableBorderColor: ${toRgba(fontBase, 0.25)};
+  --deleteColor: #ff5252;
+  --selectionColor: ${toRgba(c.primary || '#7c4dff', 0.25)};
+  --editorBgColor: ${c.bg || '#ffffff'};
+  --iconColor: ${toRgba(fontBase, 0.6)};
+}
+body.theme-file-theme {
+  background-color: ${c.bg || '#ffffff'};
+}
+body.theme-file-theme #ag-editor-id h1, body.theme-file-theme #ag-editor-id h2,
+body.theme-file-theme #ag-editor-id h3, body.theme-file-theme #ag-editor-id h4,
+body.theme-file-theme #ag-editor-id h5, body.theme-file-theme #ag-editor-id h6,
+body.theme-file-theme #ag-editor-id p.ag-atx-line {
+  color: ${c.heading || fontBase};
+}
+body.theme-file-theme #ag-editor-id a.ag-link-in-bracket, body.theme-file-theme #ag-editor-id a, body.theme-file-theme #ag-editor-id .ag-link {
+  color: ${c.link || c.primary || fontBase};
+}
+body.theme-file-theme #ag-editor-id code.ag-inline-rule {
+  color: ${c['inline-code'] || c['code-keyword'] || fontBase};
+  background-color: ${c['code-bg'] || 'transparent'};
+}
+body.theme-file-theme #ag-editor-id blockquote {
+  color: ${c.del || fontBase};
+  border-left-color: ${toRgba(c.del || fontBase, 0.4)};
+}
+body.theme-file-theme #ag-editor-id del {
+  color: ${c.del || fontBase};
+}
+body.theme-file-theme #ag-editor-id pre > code {
+  color: ${c['code-font'] || fontBase};
+  background-color: ${c['code-bg'] || '#f7f7f7'};
+}
+body.theme-file-theme #ag-editor-id pre span.ag-code-content {
+  color: ${c['code-font'] || fontBase};
+}
+body.theme-file-theme #ag-editor-id pre .token.keyword, body.theme-file-theme #ag-editor-id pre .token.important {
+  color: ${c['code-keyword'] || c.primary || fontBase};
+}
+body.theme-file-theme #ag-editor-id pre .token.comment {
+  color: ${c['code-comment'] || c.del || fontBase};
+}
+body.theme-file-theme #ag-editor-id pre .token.number {
+  color: ${c['code-number'] || fontBase};
+}
+body.theme-file-theme #ag-editor-id pre .token.string {
+  color: ${c['code-string'] || fontBase};
+}
+body.theme-file-theme #ag-editor-id pre .token.attr-name, body.theme-file-theme #ag-editor-id pre .token.property {
+  color: ${c['code-attr'] || fontBase};
+}
+body.theme-file-theme #ag-editor-id pre .token.selector {
+  color: ${c['code-selector'] || fontBase};
+}
+body.theme-file-theme #ag-editor-id pre .token.operator {
+  color: ${c['code-operator'] || fontBase};
+}
+body.theme-file-theme #ag-editor-id pre .token.function, body.theme-file-theme #ag-editor-id pre .token.function-name {
+  color: ${c['code-function'] || fontBase};
+}
+body.theme-file-theme #ag-editor-id pre .token.variable {
+  color: ${c['code-variable'] || fontBase};
+}
+body.theme-file-theme #ag-editor-id pre .token.punctuation {
+  color: ${c['code-punctuation'] || fontBase};
+}
+body.theme-file-theme {
+  font-family: ${(theme.typography && theme.typography['font-family']) || 'var(--font-family)'};
+  font-size: ${(theme.typography && theme.typography['font-size']) || '16px'};
+  line-height: ${(theme.typography && theme.typography['line-height']) || '1.8'};
+}
+body.theme-file-theme #ag-editor-id, body.theme-file-theme #ag-editor-id .ag-paragraph-content {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+`
+  // Remove any previously applied file-theme style, then inject the new one.
+  document.getElementById('app-theme-style')?.remove()
+  const style = document.createElement('style')
+  style.id = 'app-theme-style'
+  style.textContent = css
+  document.head.appendChild(style)
+}
+
+async function applyTheme(theme) {
   currentTheme = theme || 'system'
-  const dark = currentTheme === 'dark' || (currentTheme === 'system' && themeMedia.matches)
-  document.body.classList.toggle('theme-dark', dark)
+  const isFileTheme = !['light', 'dark', 'system'].includes(currentTheme)
+  let dark
+  if (isFileTheme) {
+    const meta = await window.electronAPI.getThemeContent(currentTheme).catch(() => null)
+    dark = !!(meta && meta.dark)
+    if (meta) {
+      applyFileTheme(meta)
+    } else {
+      // Theme file deleted/renamed → fall back to system.
+      currentTheme = 'system'
+      dark = themeMedia.matches
+      document.getElementById('app-theme-style')?.remove()
+    }
+    document.body.classList.toggle('theme-dark', dark)
+    document.body.classList.toggle('theme-file-theme', true)
+  } else {
+    document.getElementById('app-theme-style')?.remove()
+    dark = currentTheme === 'dark' || (currentTheme === 'system' && themeMedia.matches)
+    document.body.classList.toggle('theme-dark', dark)
+    document.body.classList.toggle('theme-file-theme', false)
+  }
   syncWindowBackground()
   syncMermaidTheme()
 }
@@ -432,9 +571,9 @@ function applyTheme(theme) {
 async function initTheme() {
   try {
     const settings = await window.electronAPI.getSettings()
-    applyTheme(settings && settings.theme)
+    await applyTheme(settings && settings.theme)
   } catch (e) {
-    applyTheme('system')
+    await applyTheme('system')
   }
   themeMedia.addEventListener('change', () => {
     if (currentTheme === 'system') applyTheme('system')
@@ -444,7 +583,7 @@ async function initTheme() {
 // Initial update
 initTheme()
 
-window.electronAPI.onSettingsChanged((settings) => {
+window.electronAPI.onSettingsChanged(async (settings) => {
   if (settings && settings.theme) applyTheme(settings.theme)
 })
 
@@ -840,6 +979,10 @@ document.querySelector('#titlebar').addEventListener('dblclick', (e) => {
 
 // Keep the native window background in sync with the app theme (avoids flash while resizing)
 function syncWindowBackground() {
+  if (currentThemeMeta && currentThemeMeta.colors && currentThemeMeta.colors.bg) {
+    window.electronAPI.setWindowBackground(currentThemeMeta.colors.bg)
+    return
+  }
   const dark = document.body.classList.contains('theme-dark')
   window.electronAPI.setWindowBackground(dark ? '#1a1a1a' : '#ffffff')
 }

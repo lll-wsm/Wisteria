@@ -15,6 +15,63 @@ function settingsFilePath() {
   return path.join(app.getPath('userData'), 'settings.json')
 }
 
+// ===================== Theme registry (pluggable themes) =====================
+// Each theme is a JSON file in <userData>/themes/*.theme.json. Deleting a file
+// removes the theme; a missing/renamed theme falls back to 'system'.
+const THEME_DIR = path.join(app.getPath('userData'), 'themes')
+
+function themesDir() {
+  return THEME_DIR
+}
+
+function listThemes() {
+  try {
+    fs.mkdirSync(themesDir(), { recursive: true })
+  } catch (e) {
+    console.error('Failed to create themes dir:', e)
+  }
+  let files = []
+  try {
+    files = fs.readdirSync(themesDir()).filter((f) => f.endsWith('.theme.json'))
+  } catch (e) {
+    return []
+  }
+  const themes = []
+  for (const file of files) {
+    try {
+      const raw = fs.readFileSync(path.join(themesDir(), file), 'utf8')
+      const data = JSON.parse(raw)
+      if (data && typeof data.name === 'string' && data.colors) {
+        themes.push({
+          name: data.name,
+          label: data.label || data.name,
+          dark: !!data.dark,
+          file
+        })
+      }
+    } catch (e) {
+      console.error('Invalid theme file:', file, e)
+    }
+  }
+  return themes
+}
+
+function getThemeContent(name) {
+  const theme = listThemes().find((t) => t.name === name)
+  if (!theme) return null
+  try {
+    const raw = fs.readFileSync(path.join(themesDir(), theme.file), 'utf8')
+    return JSON.parse(raw)
+  } catch (e) {
+    console.error('Failed to read theme:', name, e)
+    return null
+  }
+}
+
+function themeExists(name) {
+  return listThemes().some((t) => t.name === name)
+}
+
 function defaultLanguage() {
   try {
     const preferred = app.getPreferredSystemLanguages()
@@ -37,7 +94,7 @@ function loadSettings() {
   if (!['zh-CN', 'en-US'].includes(settings.language)) {
     settings.language = defaultLanguage()
   }
-  if (!['light', 'dark', 'system'].includes(settings.theme)) {
+  if (!['light', 'dark', 'system'].includes(settings.theme) && !themeExists(settings.theme)) {
     settings.theme = 'system'
   }
 }
@@ -817,6 +874,14 @@ ipcMain.handle('settings-get', () => {
   return { language: settings.language, theme: settings.theme }
 })
 
+ipcMain.handle('themes-list', () => {
+  return listThemes()
+})
+
+ipcMain.handle('theme-get', (event, name) => {
+  return getThemeContent(name)
+})
+
 ipcMain.handle('settings-set', (event, patch) => {
   if (!patch || typeof patch !== 'object') {
     return { success: false, error: 'invalid patch' }
@@ -826,7 +891,8 @@ ipcMain.handle('settings-set', (event, patch) => {
     settings.language = patch.language
     changed = true
   }
-  if ('theme' in patch && ['light', 'dark', 'system'].includes(patch.theme) && patch.theme !== settings.theme) {
+  const isBuiltinTheme = ['light', 'dark', 'system'].includes(patch.theme)
+  if ('theme' in patch && (isBuiltinTheme || themeExists(patch.theme)) && patch.theme !== settings.theme) {
     settings.theme = patch.theme
     changed = true
   }

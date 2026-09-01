@@ -1,0 +1,36 @@
+{
+  "name": "nord",
+  "label": "Nord",
+  "dark": true,
+  "colors": {
+    "bg": "#2f3440",
+    "font": "#edEef3",
+    "heading": "#d9dde7",
+    "link": "#a7bd90",
+    "primary": "#90b9c9",
+    "del": "#a0a3ab",
+    "mark": "#9b6264",
+    "code-bg": "#363945",
+    "code-font": "#edEef3",
+    "border": "#636e84",
+    "inline-code": "#88c0d0",
+    "code-keyword": "#94becE",
+    "code-comment": "#a9b3d2",
+    "code-number": "#a7bd90",
+    "code-string": "#e8bEE4",
+    "code-attr": "#d8a189",
+    "code-selector": "#e39e86",
+    "code-property": "#8fbcbb",
+    "code-operator": "#81a1c1",
+    "code-function": "#88c0d0",
+    "code-variable": "#d8dee9",
+    "code-punctuation": "#eceff4"
+  },
+  "typography": {
+    "font-family": "-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif",
+    "font-size": "16px",
+    "line-height": "1.6",
+    "heading-weight": 600,
+    "content-max-width": "46rem"
+  }
+}

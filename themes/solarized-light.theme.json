@@ -1,0 +1,36 @@
+{
+  "name": "solarized-light",
+  "label": "Solarized Light",
+  "dark": false,
+  "colors": {
+    "bg": "#fdf6e3",
+    "font": "#323e45",
+    "heading": "#3b4f54",
+    "link": "#ac7514",
+    "primary": "#a56812",
+    "del": "#717f7d",
+    "mark": "#caff93",
+    "code-bg": "#fcf4dc",
+    "code-font": "#657b83",
+    "border": "#93a1a1",
+    "inline-code": "#c7254e",
+    "code-keyword": "#1082b7",
+    "code-comment": "#838383",
+    "code-number": "#107fb2",
+    "code-string": "#1b00ce",
+    "code-attr": "#cf0cb2",
+    "code-selector": "#d33905",
+    "code-property": "#6c71c4",
+    "code-operator": "#d33682",
+    "code-function": "#268bd2",
+    "code-variable": "#268bd2",
+    "code-punctuation": "#657b83"
+  },
+  "typography": {
+    "font-family": "-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif",
+    "font-size": "16px",
+    "line-height": "1.6",
+    "heading-weight": 600,
+    "content-max-width": "46rem"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "lark",
+  "label": "Lark",
+  "dark": false,
+  "colors": {
+    "bg": "#ffffff",
+    "font": "#1f2329",
+    "heading": "#1f2329",
+    "link": "#3370ff",
+    "primary": "#3370ff",
+    "del": "#8a94a6",
+    "mark": "#fff67a",
+    "code-bg": "#f5f6f7",
+    "code-font": "#1f2329",
+    "border": "#dee0e3",
+    "inline-code": "#c7254e",
+    "code-keyword": "#3370ff",
+    "code-comment": "#8a94a6",
+    "code-number": "#c7254e",
+    "code-string": "#333333",
+    "code-attr": "#2d65c9",
+    "code-selector": "#2d8c52",
+    "code-property": "#6c5ce7",
+    "code-operator": "#3370ff",
+    "code-function": "#2d65c9",
+    "code-variable": "#1f2329",
+    "code-punctuation": "#1f2329"
+  },
+  "typography": {
+    "font-family": "-apple-system, BlinkMacSystemFont, Helvetica Neue, Arial, PingFang SC, Microsoft Yahei, sans-serif",
+    "font-size": "16px",
+    "line-height": "1.68",
+    "heading-weight": 500,
+    "content-max-width": "46rem"
+  }
+}

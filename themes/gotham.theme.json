@@ -1,0 +1,36 @@
+{
+  "name": "gotham",
+  "label": "Gotham",
+  "dark": true,
+  "colors": {
+    "bg": "#11151c",
+    "font": "#6aa9b9",
+    "heading": "#2eb88c",
+    "link": "#f2825a",
+    "primary": "#2aa889",
+    "del": "#599cab",
+    "mark": "#2b384f",
+    "code-bg": "#0a1722",
+    "code-font": "#599cab",
+    "border": "#122a3f",
+    "inline-code": "#2eb88c",
+    "code-keyword": "#a0a2b6",
+    "code-comment": "#6dabb6",
+    "code-number": "#7676c1",
+    "code-string": "#e7a634",
+    "code-attr": "#57b8e5",
+    "code-selector": "#ee8b68",
+    "code-property": "#2aa889",
+    "code-operator": "#f2825a",
+    "code-function": "#57b8e5",
+    "code-variable": "#6aa9b9",
+    "code-punctuation": "#6aa9b9"
+  },
+  "typography": {
+    "font-family": "-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif",
+    "font-size": "16px",
+    "line-height": "1.6",
+    "heading-weight": 600,
+    "content-max-width": "46rem"
+  }
+}

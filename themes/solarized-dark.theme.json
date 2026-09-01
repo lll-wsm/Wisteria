@@ -1,0 +1,36 @@
+{
+  "name": "solarized-dark",
+  "label": "Solarized Dark",
+  "dark": true,
+  "colors": {
+    "bg": "#0b3742",
+    "font": "#9ba6a4",
+    "heading": "#abb5b4",
+    "link": "#3fc6b4",
+    "primary": "#2c9285",
+    "del": "#6a8690",
+    "mark": "#1f0032",
+    "code-bg": "#062128",
+    "code-font": "#94a2a2",
+    "border": "#032c36",
+    "inline-code": "#f0837f",
+    "code-keyword": "#69b5d8",
+    "code-comment": "#a6a6a6",
+    "code-number": "#31b1ed",
+    "code-string": "#6952ff",
+    "code-attr": "#d40cb6",
+    "code-selector": "#fc8a64",
+    "code-property": "#6c71c4",
+    "code-operator": "#d33682",
+    "code-function": "#268bd2",
+    "code-variable": "#268bd2",
+    "code-punctuation": "#839496"
+  },
+  "typography": {
+    "font-family": "-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif",
+    "font-size": "16px",
+    "line-height": "1.6",
+    "heading-weight": 600,
+    "content-max-width": "46rem"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "dracula",
+  "label": "Dracula",
+  "dark": true,
+  "colors": {
+    "bg": "#353846",
+    "font": "#ffffff",
+    "heading": "#50fa7b",
+    "link": "#8be9fd",
+    "primary": "#cdaef9",
+    "del": "#b2b8a3",
+    "mark": "#5f6375",
+    "code-bg": "#1f202a",
+    "code-font": "#f9f9f5",
+    "border": "#bb91f8",
+    "inline-code": "#ff79c6",
+    "code-keyword": "#73d5e9",
+    "code-comment": "#7587b3",
+    "code-number": "#caa9fa",
+    "code-string": "#f4f99d",
+    "code-attr": "#ff92d0",
+    "code-selector": "#f4f99d",
+    "code-property": "#ffb86c",
+    "code-operator": "#ff79c6",
+    "code-function": "#50fa7b",
+    "code-variable": "#f8f8f2",
+    "code-punctuation": "#f8f8f2"
+  },
+  "typography": {
+    "font-family": "-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif",
+    "font-size": "16px",
+    "line-height": "1.6",
+    "heading-weight": 600,
+    "content-max-width": "46rem"
+  }
+}
