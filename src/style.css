@@ -479,6 +479,13 @@ body.theme-dark #ag-editor-id figure.ag-container-block svg [stroke='#000000'] {
   opacity: 0 !important;
 }
 
+/* Copy button uses its own PNG icon; neutralize muya's sprite trick
+   (left:-16px + drop-shadow) so the icon renders once, in place. */
+#ag-editor-id a.ag-code-copy i.icon > i[class^='icon-'] {
+  left: 0;
+  filter: none;
+}
+
 /* Floating Menu Style */
 #floating-menu {
   position: absolute;
