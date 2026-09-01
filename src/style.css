@@ -28,6 +28,8 @@
   --iconColor: rgba(44, 62, 80, 0.6);
   --code-bg: #f6f8fa;
   --code-border: rgba(44, 62, 80, 0.15);
+  --fm-bg: #fafbfc;
+  --fm-border: rgba(44, 62, 80, 0.12);
 }
 
 body.theme-dark {
@@ -55,6 +57,8 @@ body.theme-dark {
   --iconColor: rgba(224, 224, 224, 0.6);
   --code-bg: #1f2428;
   --code-border: rgba(224, 224, 224, 0.18);
+  --fm-bg: #23282f;
+  --fm-border: rgba(224, 224, 224, 0.12);
 }
 
 body {
@@ -549,6 +553,43 @@ body.theme-dark #ag-editor-id figure.ag-container-block svg [stroke='#000000'] {
   border: 1px solid var(--code-border, rgba(0, 0, 0, 0.15));
   border-radius: 6px;
   padding: 1rem 1.25rem;
+}
+
+/* ===== YAML front matter (document metadata) =====
+   Front matter is metadata, not body code: give it a lighter, quieter look
+   than regular code blocks, with a thin accent bar on the left so it reads
+   as a distinct "header" section. Key names follow the theme accent color. */
+#ag-editor-id pre.ag-front-matter,
+#ag-editor-id pre.ag-active.ag-front-matter {
+  background-color: var(--fm-bg, rgba(0, 0, 0, 0.02)) !important;
+  border: 1px solid var(--fm-border, rgba(0, 0, 0, 0.1)) !important;
+  border-left: 3px solid var(--themeColor, #7c4dff) !important;
+  border-radius: 6px !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 13px !important;
+}
+
+#ag-editor-id pre.ag-front-matter .ag-code-content {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+#ag-editor-id pre.ag-front-matter .token.key,
+#ag-editor-id pre.ag-front-matter .token.atrule {
+  color: var(--themeColor, #7c4dff);
+}
+
+#ag-editor-id pre.ag-front-matter .token.punctuation {
+  color: var(--editorColor50, rgba(44, 62, 80, 0.5));
+}
+
+/* Front matter `---` delimiters stay subtle. */
+#ag-editor-id pre.ag-front-matter::before,
+#ag-editor-id pre.ag-front-matter::after {
+  color: var(--editorColor30, rgba(44, 62, 80, 0.3)) !important;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
 }
 
 #ag-editor-id pre .ag-code-content {

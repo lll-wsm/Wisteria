@@ -490,6 +490,8 @@ body.theme-file-theme, body.theme-file-theme #ag-editor-id {
   --iconColor: ${toRgba(fontBase, 0.6)};
   --code-bg: ${c.codeBg || toRgba(c.bg ? c.bg : '#ffffff', 0.04)};
   --code-border: ${toRgba(fontBase, 0.15)};
+  --fm-bg: ${toRgba(c.bg ? c.bg : '#ffffff', 0.02)};
+  --fm-border: ${toRgba(fontBase, 0.1)};
 }
 body.theme-file-theme {
   background-color: ${c.bg || '#ffffff'};
