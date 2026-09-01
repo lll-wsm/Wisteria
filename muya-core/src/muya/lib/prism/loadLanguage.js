@@ -11,8 +11,7 @@ export const loadedLanguages = new Set(['markup', 'css', 'clike', 'javascript'])
 const { languages } = components
 
 const prismJsComponents = import.meta.glob([
-  '../../../../node_modules/prismjs/components/*.js',
-  '../../../../../node_modules/prismjs/components/*.js'
+  './components/*.js'
 ])
 // Look for the origin languge by alias
 export const transformAliasToOrigin = (langs) => {
@@ -79,7 +78,7 @@ function initLoadLanguage(Prism) {
       } else {
         delete Prism.languages[lang]
 
-        const loaderNameMatch = `node_modules/prismjs/components/prism-${lang}.js`
+        const loaderNameMatch = `prism-${lang}.js`
         const loaderKey = Object.keys(prismJsComponents).find((key) => key.endsWith(loaderNameMatch))
         const loader = prismJsComponents[loaderKey]
         if (loader) {

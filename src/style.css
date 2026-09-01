@@ -501,6 +501,137 @@ body.theme-dark #ag-editor-id figure.ag-container-block svg [stroke='#000000'] {
   content: none;
 }
 
+/* ===== Code block syntax highlighting (Prism tokens) =====
+   muya already wraps code tokens in <span class="token ...">; these rules
+   give them per-category colors in both light and dark themes. */
+:root {
+  --code-keyword: #d73a49;
+  --code-string: #032f62;
+  --code-function: #6f42c1;
+  --code-number: #005cc5;
+  --code-comment: #6a737d;
+  --code-operator: #d73a49;
+  --code-class-name: #e36209;
+  --code-variable: #e36209;
+  --code-tag: #22863a;
+  --code-attribute: #6f42c1;
+  --code-boolean: #005cc5;
+  --code-constant: #005cc5;
+  --code-punctuation: var(--editorColor80);
+  --code-regex: #22863a;
+}
+
+body.theme-dark {
+  --code-keyword: #ff7b72;
+  --code-string: #a5d6ff;
+  --code-function: #d2a8ff;
+  --code-number: #79c0ff;
+  --code-comment: #8b949e;
+  --code-operator: #ff7b72;
+  --code-class-name: #ffa657;
+  --code-variable: #ffa657;
+  --code-tag: #7ee787;
+  --code-attribute: #d2a8ff;
+  --code-boolean: #79c0ff;
+  --code-constant: #79c0ff;
+  --code-punctuation: var(--editorColor80);
+  --code-regex: #7ee787;
+}
+
+#ag-editor-id pre .token.keyword,
+#ag-editor-id pre .token.important,
+#ag-editor-id pre .token.atrule {
+  color: var(--code-keyword);
+}
+
+#ag-editor-id pre .token.string,
+#ag-editor-id pre .token.char,
+#ag-editor-id pre .token.attr-value,
+#ag-editor-id pre .token.plain-text {
+  color: var(--code-string);
+}
+
+#ag-editor-id pre .token.function,
+#ag-editor-id pre .token.method {
+  color: var(--code-function);
+}
+
+#ag-editor-id pre .token.number,
+#ag-editor-id pre .token.hexcode,
+#ag-editor-id pre .token.unit {
+  color: var(--code-number);
+}
+
+#ag-editor-id pre .token.comment,
+#ag-editor-id pre .token.prolog,
+#ag-editor-id pre .token.doctype,
+#ag-editor-id pre .token.cdata {
+  color: var(--code-comment);
+  font-style: italic;
+}
+
+#ag-editor-id pre .token.operator,
+#ag-editor-id pre .token.arrow,
+#ag-editor-id pre .token.punctuation.operator {
+  color: var(--code-operator);
+}
+
+#ag-editor-id pre .token.class-name,
+#ag-editor-id pre .token.namespace {
+  color: var(--code-class-name);
+}
+
+#ag-editor-id pre .token.variable,
+#ag-editor-id pre .token.parameter {
+  color: var(--code-variable);
+}
+
+#ag-editor-id pre .token.tag,
+#ag-editor-id pre .token.selector {
+  color: var(--code-tag);
+}
+
+#ag-editor-id pre .token.attr-name,
+#ag-editor-id pre .token.property,
+#ag-editor-id pre .token.builtin {
+  color: var(--code-attribute);
+}
+
+#ag-editor-id pre .token.boolean,
+#ag-editor-id pre .token.constant,
+#ag-editor-id pre .token.symbol,
+#ag-editor-id pre .token.entity {
+  color: var(--code-boolean);
+}
+
+#ag-editor-id pre .token.regex,
+#ag-editor-id pre .token.url {
+  color: var(--code-regex);
+}
+
+#ag-editor-id pre .token.punctuation {
+  color: var(--code-punctuation);
+}
+
+#ag-editor-id pre .token.deleted {
+  color: var(--code-keyword);
+  background: rgba(255, 82, 82, 0.12);
+}
+
+#ag-editor-id pre .token.inserted {
+  color: var(--code-tag);
+  background: rgba(34, 134, 54, 0.12);
+}
+
+#ag-editor-id pre .language-css .token.string,
+#ag-editor-id pre .style .token.string {
+  color: var(--code-string);
+}
+
+#ag-editor-id pre .language-css .token.property {
+  color: var(--code-attribute);
+}
+
 /* Floating Menu Style */
 #floating-menu {
   position: absolute;
