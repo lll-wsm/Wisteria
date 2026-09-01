@@ -16,37 +16,35 @@ function settingsFilePath() {
 }
 
 // ===================== Theme registry (pluggable themes) =====================
-// Each theme is a JSON file in <userData>/themes/*.theme.json. Deleting a file
-// removes the theme; a missing/renamed theme falls back to 'system'.
-const THEME_DIR = path.join(app.getPath('userData'), 'themes')
+// Built-in themes live in <app>/themes/*.theme.json (shipped with the app);
+// user themes live in <userData>/themes/*.theme.json. Deleting a file removes
+// the theme; a missing/renamed theme falls back to 'system'.
+const USER_THEME_DIR = path.join(app.getPath('userData'), 'themes')
 
-function themesDir() {
-  return THEME_DIR
+function builtinThemeDir() {
+  return path.join(__dirname, 'themes')
 }
 
-function listThemes() {
-  try {
-    fs.mkdirSync(themesDir(), { recursive: true })
-  } catch (e) {
-    console.error('Failed to create themes dir:', e)
-  }
+function readThemeDir(dir) {
   let files = []
   try {
-    files = fs.readdirSync(themesDir()).filter((f) => f.endsWith('.theme.json'))
+    fs.mkdirSync(dir, { recursive: true })
+    files = fs.readdirSync(dir).filter((f) => f.endsWith('.theme.json'))
   } catch (e) {
     return []
   }
   const themes = []
   for (const file of files) {
     try {
-      const raw = fs.readFileSync(path.join(themesDir(), file), 'utf8')
+      const raw = fs.readFileSync(path.join(dir, file), 'utf8')
       const data = JSON.parse(raw)
       if (data && typeof data.name === 'string' && data.colors) {
         themes.push({
           name: data.name,
           label: data.label || data.name,
           dark: !!data.dark,
-          file
+          file,
+          dir
         })
       }
     } catch (e) {
@@ -56,11 +54,19 @@ function listThemes() {
   return themes
 }
 
+function listThemes() {
+  // User themes override built-in themes with the same name.
+  const byName = new Map()
+  for (const t of readThemeDir(builtinThemeDir())) byName.set(t.name, t)
+  for (const t of readThemeDir(USER_THEME_DIR)) byName.set(t.name, t)
+  return [...byName.values()]
+}
+
 function getThemeContent(name) {
   const theme = listThemes().find((t) => t.name === name)
   if (!theme) return null
   try {
-    const raw = fs.readFileSync(path.join(themesDir(), theme.file), 'utf8')
+    const raw = fs.readFileSync(path.join(theme.dir, theme.file), 'utf8')
     return JSON.parse(raw)
   } catch (e) {
     console.error('Failed to read theme:', name, e)
