@@ -486,6 +486,15 @@ body.theme-dark #ag-editor-id figure.ag-container-block svg [stroke='#000000'] {
   filter: none;
 }
 
+/* Remove the fence markers shown around an active fenced code block
+   (``` top-left/bottom-left and the "fence" label bottom-right):
+   on short/empty blocks the label overlaps the copy button. */
+#ag-editor-id pre.ag-active.ag-fence-code::before,
+#ag-editor-id pre.ag-active.ag-fence-code::after,
+#ag-editor-id pre.ag-active.ag-fence-code > code::before {
+  content: none !important;
+}
+
 /* Empty code block in editing mode: keep the opening/closing fences on the
    same row as the language input, and align the copy button with that row,
    instead of the button floating between the two fence rows. */
