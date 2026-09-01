@@ -44,6 +44,24 @@ const muya = new Muya(container, {
 
 console.log('Muya initialized:', muya)
 
+// Focus the editor after construction so the first (empty) line shows its
+// front icon and the "Type @ to insert" hint. Without this the active block
+// is not set until the user clicks/types/folds, so those indicators stay
+// hidden on a fresh launch. setCursor() re-renders so the active class is
+// applied to the cursor's block (focus() alone only sets the DOM selection).
+setTimeout(() => {
+  if (muya && typeof muya.focus === 'function') {
+    muya.focus()
+    if (typeof muya.setCursor === 'function') {
+      try {
+        muya.setCursor()
+      } catch (e) {
+        console.error('Initial cursor render failed:', e)
+      }
+    }
+  }
+}, 100)
+
 // ===================== i18n (renderer) =====================
 function t(key, vars) {
   let str = (dicts[currentLang] && dicts[currentLang][key]) || dicts['en-US'][key] || key
