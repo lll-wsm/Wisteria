@@ -242,6 +242,38 @@ export default function renderLeafBlock(parent, block, activeBlocks, matches, us
       wrapper.classList.add(`language-${transformedLang}`)
       wrapper.innerHTML = code
       prism.highlightElement(wrapper, false, function() {
+        // Collect user-defined function names (definition form: name() { or function name() {),
+        // then wrap bare occurrences elsewhere (call sites) with the function-name class so
+        // call sites get the same color as definitions (e.g. bash `ensure_rust` after its def).
+        const definedNames = new Set()
+        const nameRe = /(?:^|\n)[ \t]*(?:function[ \t]+)?([A-Za-z_][\w-]*)[ \t]*\([ \t]*\)[ \t]*\{/g
+        let nameMatch
+        while ((nameMatch = nameRe.exec(text))) {
+          definedNames.add(nameMatch[1])
+        }
+        if (definedNames.size) {
+          const walker = document.createTreeWalker(this, NodeFilter.SHOW_TEXT, {
+            acceptNode: (node) => node.parentElement.classList.contains('token') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+          })
+          const bareTextNodes = []
+          while (walker.nextNode()) bareTextNodes.push(walker.currentNode)
+          for (const node of bareTextNodes) {
+            const raw = node.textContent
+            const trimmed = raw.trim()
+            const name = definedNames.has(trimmed) ? trimmed : [...definedNames].find((n) => trimmed.startsWith(n + ' '))
+            if (!name) continue
+            const span = document.createElement('span')
+            span.className = 'token function-name function'
+            span.textContent = name
+            const before = raw.slice(0, raw.indexOf(name))
+            const after = raw.slice(raw.indexOf(name) + name.length)
+            const frag = document.createDocumentFragment()
+            if (before) frag.appendChild(document.createTextNode(before))
+            frag.appendChild(span)
+            if (after) frag.appendChild(document.createTextNode(after))
+            node.parentElement.replaceChild(frag, node)
+          }
+        }
         const highlightedCode = this.innerHTML
         selector += `.language-${transformedLang}`
         children = htmlToVNode(highlightedCode)
