@@ -140,7 +140,7 @@
 			// “Normal” string
 			{
 				// https://www.gnu.org/software/bash/manual/html_node/Double-Quotes.html
-				pattern: /(^|[^\\](?:\\\\)*)"(?:\\[\s\S]|\$\([^)]+\)|\$(?!\()|`[^`]+`|[^"\\`$])*"/,
+				pattern: /(^|[^\\](?:\\\\)*)"(?:\\[\s\S]|\$\([^)]+\)|\$(?!\()|`[^`]+`|[^"\\`$\n])*"/,
 				lookbehind: true,
 				greedy: true,
 				inside: insideString
