@@ -493,19 +493,6 @@ body.theme-dark #ag-editor-id figure.ag-container-block svg [stroke='#000000'] {
   content: none !important;
 }
 
-/* Empty code block in editing mode: keep the opening/closing fences on the
-   same row as the language input, and align the copy button with that row,
-   instead of the button floating between the two fence rows. */
-#ag-editor-id pre.ag-fence-code.ag-active:has(span.ag-code-content:empty)::after {
-  top: -20px;
-  bottom: auto;
-  left: 21em;
-}
-
-#ag-editor-id pre.ag-fence-code.ag-active:has(span.ag-code-content:empty) a.ag-code-copy {
-  top: -20px;
-}
-
 /* The bottom-right fence marker (content "fence") duplicates the bottom-left
    closing fence (pre::after) and overlaps the copy button in short blocks;
    drop it so the copy button never collides with it. */
