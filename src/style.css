@@ -503,15 +503,16 @@ body.theme-dark #ag-editor-id figure.ag-container-block svg [stroke='#000000'] {
 
 /* ===== Code block long lines =====
    Long code lines must not be clipped at the editor edge. Keep lines
-   unwrapped (white-space: pre, standard for code) and let the block scroll
-   horizontally instead. The scrollbar lives on the code content so the
-   block itself (and the copy button / fence markers) stay in place. */
+   unwrapped (white-space: pre, standard for code) and let the content
+   element scroll horizontally. The horizontal scrollbar lives on the
+   .ag-code-content element (which grows with its content, so no vertical
+   scrollbar appears); the pre itself keeps muya's default overflow so the
+   block, copy button and fence markers stay in place. */
 #ag-editor-id pre.ag-active.ag-fence-code,
 #ag-editor-id pre.ag-active.ag-indent-code,
 #ag-editor-id pre.ag-active.ag-mermaid,
 #ag-editor-id pre.ag-active.ag-front-matter,
 #ag-editor-id pre.ag-active.ag-html-block {
-  overflow-x: auto;
   max-width: 100%;
 }
 
@@ -521,21 +522,17 @@ body.theme-dark #ag-editor-id figure.ag-container-block svg [stroke='#000000'] {
   overflow-x: auto;
 }
 
-/* Slim scrollbar for code blocks (muya already defines .ag-code-content
-   scrollbar but the container needs overflow to make it appear). */
-#ag-editor-id pre .ag-code-content::-webkit-scrollbar,
-#ag-editor-id pre::-webkit-scrollbar {
+/* Slim horizontal scrollbar for code blocks. */
+#ag-editor-id pre .ag-code-content::-webkit-scrollbar {
   height: 8px;
 }
 
-#ag-editor-id pre .ag-code-content::-webkit-scrollbar-thumb,
-#ag-editor-id pre::-webkit-scrollbar-thumb {
+#ag-editor-id pre .ag-code-content::-webkit-scrollbar-thumb {
   background: var(--editorColor30, rgba(0, 0, 0, 0.25));
   border-radius: 4px;
 }
 
-#ag-editor-id pre .ag-code-content::-webkit-scrollbar-track,
-#ag-editor-id pre::-webkit-scrollbar-track {
+#ag-editor-id pre .ag-code-content::-webkit-scrollbar-track {
   background: transparent;
 }
 
