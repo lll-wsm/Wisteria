@@ -207,10 +207,11 @@ body.sidebar-open #sidebar-toggle {
   width: 100%;
 }
 
-/* Table grid borders */
+/* Table grid borders + cell padding (text must not hug the cell border) */
 #ag-editor-id table th,
 #ag-editor-id table td {
   border: 1px solid var(--tableBorderColor);
+  padding: 0.4em 0.6em;
 }
 
 /* Markdown format markers (`**`, `*`, `~~`, backticks, link syntax) are rendered
