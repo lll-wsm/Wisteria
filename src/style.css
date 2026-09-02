@@ -30,6 +30,7 @@
   --code-border: rgba(44, 62, 80, 0.15);
   --fm-bg: #fafbfc;
   --fm-border: rgba(44, 62, 80, 0.12);
+  --link-color: #0366d6;
 }
 
 body.theme-dark {
@@ -59,6 +60,7 @@ body.theme-dark {
   --code-border: rgba(224, 224, 224, 0.18);
   --fm-bg: #23282f;
   --fm-border: rgba(224, 224, 224, 0.12);
+  --link-color: #7ab3ff;
 }
 
 body {
@@ -212,6 +214,14 @@ body.sidebar-open #sidebar-toggle {
 #ag-editor-id table td {
   border: 1px solid var(--tableBorderColor);
   padding: 0.4em 0.6em;
+}
+
+/* Hyperlink text color: theme-aware, softer than the browser default blue
+   (#0000ee is too dark/harsh on dark backgrounds). File themes override
+   this via body.theme-file-theme rules in renderer.js. */
+#ag-editor-id a.ag-inline-rule,
+#ag-editor-id a.ag-notext-link {
+  color: var(--link-color, #0366d6);
 }
 
 /* Markdown format markers (`**`, `*`, `~~`, backticks, link syntax) are rendered
