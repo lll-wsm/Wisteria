@@ -603,6 +603,7 @@ async function initTheme() {
   try {
     const settings = await window.electronAPI.getSettings()
     await applyTheme(settings && settings.theme)
+    applyFontLayout(settings)
   } catch (e) {
     await applyTheme('system')
   }
@@ -611,11 +612,76 @@ async function initTheme() {
   })
 }
 
+// ===== Font & Layout settings (user-level, override theme typography) =====
+// Priority: user settings > file-theme typography > built-in defaults.
+// Colors are still driven by the theme; only font-family/size/line-height/width
+// are controlled here, so font/layout changes never rebuild the document.
+let fontLayoutSettings = null
+const FONT_LAYOUT_DEFAULTS = {
+  font: { editorFont: 'system', monoFont: 'system', editorSize: 16, codeSize: 14 },
+  layout: { lineHeight: 1.8, paragraphGap: '1em', contentWidth: 'standard', headingScale: 1.2 }
+}
+
+function applyFontLayout(settings) {
+  if (!settings) return
+  fontLayoutSettings = {
+    font: { ...FONT_LAYOUT_DEFAULTS.font, ...(settings.font || {}) },
+    layout: { ...FONT_LAYOUT_DEFAULTS.layout, ...(settings.layout || {}) }
+  }
+  const f = fontLayoutSettings.font
+  const l = fontLayoutSettings.layout
+
+  const widthMap = { narrow: '46rem', standard: '58rem', wide: '72rem', full: '100%' }
+  const width = widthMap[l.contentWidth] || widthMap.standard
+  const editorFont = f.editorFont === 'system'
+    ? '-apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif'
+    : `"${f.editorFont}", -apple-system, "PingFang SC", sans-serif`
+  const monoFont = f.monoFont === 'system'
+    ? '"SF Mono", Menlo, Monaco, Consolas, monospace'
+    : `"${f.monoFont}", Menlo, Monaco, monospace`
+
+  const css = `
+#ag-editor-id, #ag-editor-id .ag-paragraph-content {
+  font-family: ${editorFont};
+  font-size: ${f.editorSize}px;
+  line-height: ${l.lineHeight};
+}
+#ag-editor-id .ag-container-block > pre,
+#ag-editor-id .ag-container-block > pre code,
+#ag-editor-id pre .ag-code-content,
+#ag-editor-id pre .ag-language-input {
+  font-family: ${monoFont};
+  font-size: ${f.codeSize}px;
+}
+#ag-editor-id > .ag-paragraph,
+#ag-editor-id > .ag-heading,
+#ag-editor-id > .ag-container-block {
+  max-width: ${width};
+  margin-left: auto;
+  margin-right: auto;
+}
+#ag-editor-id > .ag-paragraph + .ag-paragraph,
+#ag-editor-id > .ag-heading + .ag-paragraph {
+  margin-top: ${l.paragraphGap};
+}
+#ag-editor-id h1 { font-size: ${(f.editorSize * 2 * l.headingScale).toFixed(1)}px; }
+#ag-editor-id h2 { font-size: ${(f.editorSize * 1.5 * l.headingScale).toFixed(1)}px; }
+#ag-editor-id h3 { font-size: ${(f.editorSize * 1.17 * l.headingScale).toFixed(1)}px; }
+#ag-editor-id h4 { font-size: ${(f.editorSize * l.headingScale).toFixed(1)}px; }
+`
+  document.getElementById('app-font-layout-style')?.remove()
+  const style = document.createElement('style')
+  style.id = 'app-font-layout-style'
+  style.textContent = css
+  document.head.appendChild(style)
+}
+
 // Initial update
 initTheme()
 
 window.electronAPI.onSettingsChanged(async (settings) => {
   if (settings && settings.theme) applyTheme(settings.theme)
+  if (settings && (settings.font || settings.layout)) applyFontLayout(settings)
 })
 
 // ==========================================

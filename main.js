@@ -15,7 +15,12 @@ let mainWindow = null
 let currentFilePath = null
 
 // ===================== Settings (language / theme) =====================
-let settings = { language: 'en-US', theme: 'system' }
+let settings = {
+  language: 'en-US',
+  theme: 'system',
+  font: { editorFont: 'system', monoFont: 'system', editorSize: 16, codeSize: 14 },
+  layout: { lineHeight: 1.8, paragraphGap: '1em', contentWidth: 'standard', headingScale: 1.2 }
+}
 
 function settingsFilePath() {
   return path.join(app.getPath('userData'), 'settings.json')
@@ -108,6 +113,22 @@ function loadSettings() {
   }
   if (!['light', 'dark', 'system'].includes(settings.theme) && !themeExists(settings.theme)) {
     settings.theme = 'system'
+  }
+  // Validate font settings (partial object from older versions is repaired in place).
+  const f = settings.font || {}
+  settings.font = {
+    editorFont: typeof f.editorFont === 'string' ? f.editorFont : 'system',
+    monoFont: typeof f.monoFont === 'string' ? f.monoFont : 'system',
+    editorSize: typeof f.editorSize === 'number' && f.editorSize >= 12 && f.editorSize <= 22 ? f.editorSize : 16,
+    codeSize: typeof f.codeSize === 'number' && f.codeSize >= 11 && f.codeSize <= 20 ? f.codeSize : 14
+  }
+  // Validate layout settings.
+  const l = settings.layout || {}
+  settings.layout = {
+    lineHeight: typeof l.lineHeight === 'number' && l.lineHeight >= 1.4 && l.lineHeight <= 2.4 ? l.lineHeight : 1.8,
+    paragraphGap: /^[\d.]+(em|px)$/.test(String(l.paragraphGap)) ? String(l.paragraphGap) : '1em',
+    contentWidth: ['narrow', 'standard', 'wide', 'full'].includes(l.contentWidth) ? l.contentWidth : 'standard',
+    headingScale: typeof l.headingScale === 'number' && l.headingScale >= 1.0 && l.headingScale <= 1.4 ? l.headingScale : 1.2
   }
 }
 
@@ -1004,7 +1025,12 @@ ipcMain.handle('get-language', () => {
 })
 
 ipcMain.handle('settings-get', () => {
-  return { language: settings.language, theme: settings.theme }
+  return {
+    language: settings.language,
+    theme: settings.theme,
+    font: settings.font,
+    layout: settings.layout
+  }
 })
 
 ipcMain.handle('themes-list', () => {
@@ -1029,13 +1055,46 @@ ipcMain.handle('settings-set', (event, patch) => {
     settings.theme = patch.theme
     changed = true
   }
+  if ('font' in patch && patch.font && typeof patch.font === 'object') {
+    const f = patch.font
+    const next = { ...settings.font }
+    if ('editorFont' in f && typeof f.editorFont === 'string') next.editorFont = f.editorFont
+    if ('monoFont' in f && typeof f.monoFont === 'string') next.monoFont = f.monoFont
+    if ('editorSize' in f && typeof f.editorSize === 'number') {
+      next.editorSize = Math.min(22, Math.max(12, f.editorSize))
+    }
+    if ('codeSize' in f && typeof f.codeSize === 'number') {
+      next.codeSize = Math.min(20, Math.max(11, f.codeSize))
+    }
+    settings.font = next
+    changed = true
+  }
+  if ('layout' in patch && patch.layout && typeof patch.layout === 'object') {
+    const l = patch.layout
+    const next = { ...settings.layout }
+    if ('lineHeight' in l && typeof l.lineHeight === 'number') {
+      next.lineHeight = Math.min(2.4, Math.max(1.4, l.lineHeight))
+    }
+    if ('paragraphGap' in l && /^[\d.]+(em|px)$/.test(String(l.paragraphGap))) next.paragraphGap = String(l.paragraphGap)
+    if ('contentWidth' in l && ['narrow', 'standard', 'wide', 'full'].includes(l.contentWidth)) next.contentWidth = l.contentWidth
+    if ('headingScale' in l && typeof l.headingScale === 'number') {
+      next.headingScale = Math.min(1.4, Math.max(1.0, l.headingScale))
+    }
+    settings.layout = next
+    changed = true
+  }
   if (changed) {
     saveSettings()
     buildMenu()
-    broadcastToAll('settings-changed', { language: settings.language, theme: settings.theme })
+    broadcastToAll('settings-changed', {
+      language: settings.language,
+      theme: settings.theme,
+      font: settings.font,
+      layout: settings.layout
+    })
     if ('language' in patch) {
       sendToRenderer('language-changed', settings.language)
     }
   }
-  return { success: true, settings: { language: settings.language, theme: settings.theme } }
+  return { success: true, settings: { language: settings.language, theme: settings.theme, font: settings.font, layout: settings.layout } }
 })
