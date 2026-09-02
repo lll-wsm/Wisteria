@@ -1951,6 +1951,9 @@ window.electronAPI.onMenuReopenEncoding((encoding) => {
 window.electronAPI.onLanguageChanged((lang) => {
   currentLang = lang
   applyI18n()
+  if (muya && muya.frontMenu && typeof muya.frontMenu.setLanguage === 'function') {
+    muya.frontMenu.setLanguage(t)
+  }
   if (typeof findReplacePanel !== 'undefined' && findReplacePanel && !findReplacePanel.classList.contains('hidden')) {
     updateCountDisplay()
   }
@@ -1970,5 +1973,8 @@ renderTree(null)
     console.error('Failed to load language:', e)
   }
   applyI18n()
+  if (muya && muya.frontMenu && typeof muya.frontMenu.setLanguage === 'function') {
+    muya.frontMenu.setLanguage(t)
+  }
   markSaved(muya.markdown)
 })()

@@ -45,6 +45,16 @@ class FrontMenu extends BaseFloat {
     this.listen()
   }
 
+  // Rebuild the menu/label/submenu factories when the UI language changes.
+  // Menu item texts are snapshots created at construction time, so they must
+  // be recreated with the new translation function.
+  setLanguage(t) {
+    this.t = t || muya.options.t || ((key) => key)
+    this.menu = createMenu(this.t)
+    this.getLabel = createGetLabel(this.t)
+    this.getSubMenu = createGetSubMenu(this.t)
+  }
+
   listen() {
     const { eventCenter } = this.muya
     super.listen()
